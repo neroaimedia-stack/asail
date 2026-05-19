@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { KeyboardEvent, useMemo, useState } from "react";
 import { createCampaign } from "./actions";
 
 const moneyFormatter = new Intl.NumberFormat("en-US", {
@@ -12,6 +12,21 @@ const moneyFormatter = new Intl.NumberFormat("en-US", {
 const viewsFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
+
+const platformOptions = [
+  { label: "YouTube", value: "youtube" },
+  { label: "TikTok", value: "tiktok" },
+  { label: "Instagram", value: "instagram" },
+];
+
+const durationOptions = [
+  { label: "No minimum", value: "" },
+  { label: "15s", value: "15" },
+  { label: "30s", value: "30" },
+  { label: "60s", value: "60" },
+  { label: "90s", value: "90" },
+  { label: "2min", value: "120" },
+];
 
 function estimatedViews(totalBudget: string, cpmRate: string) {
   const budget = Number(totalBudget);
@@ -42,6 +57,16 @@ function formatPreviewDate(value: string) {
   }).format(new Date(`${value}T12:00:00`));
 }
 
+function normalizeTag(value: string, prefix?: "#" | "@") {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  return prefix && !trimmed.startsWith(prefix) ? `${prefix}${trimmed}` : trimmed;
+}
+
 export function CampaignForm({ error }: { error?: string }) {
   const [title, setTitle] = useState("");
   const [brief, setBrief] = useState("");
@@ -49,6 +74,12 @@ export function CampaignForm({ error }: { error?: string }) {
   const [totalBudget, setTotalBudget] = useState("");
   const [cpmRate, setCpmRate] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  const [requiredMentions, setRequiredMentions] = useState<string[]>([]);
+  const [requiredHashtags, setRequiredHashtags] = useState<string[]>([]);
+  const [requiredTags, setRequiredTags] = useState<string[]>([]);
+  const [dos, setDos] = useState<string[]>([]);
+  const [donts, setDonts] = useState<string[]>([]);
+  const [minDurationSeconds, setMinDurationSeconds] = useState("");
   const minEndDate = useMemo(() => minEndDateValue(), []);
 
   const coveredViews = useMemo(
@@ -97,6 +128,104 @@ export function CampaignForm({ error }: { error?: string }) {
             value={brief}
           />
         </label>
+
+        <section className="space-y-5 rounded-lg border border-amber-200 bg-[#fffaf0] p-4">
+          <div>
+            <h2 className="text-base font-semibold text-amber-950">
+              Content Guidelines
+            </h2>
+            <p className="mt-1 text-sm text-amber-900/70">
+              Add requirements creators should follow before submitting videos.
+            </p>
+          </div>
+
+          <TagInput
+            items={requiredMentions}
+            label="Required mentions"
+            name="requiredMentions"
+            onChange={setRequiredMentions}
+            placeholder="Must mention our promo price"
+          />
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <TagInput
+              items={requiredHashtags}
+              label="Required hashtags"
+              name="requiredHashtags"
+              onChange={setRequiredHashtags}
+              placeholder="AsailEats"
+              prefix="#"
+            />
+            <TagInput
+              items={requiredTags}
+              label="Required tags"
+              name="requiredTags"
+              onChange={setRequiredTags}
+              placeholder="brandaccount"
+              prefix="@"
+            />
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <TagInput
+              items={dos}
+              label="Dos"
+              name="dos"
+              onChange={setDos}
+              placeholder="Film inside the restaurant"
+            />
+            <TagInput
+              items={donts}
+              label="Don'ts"
+              name="donts"
+              onChange={setDonts}
+              placeholder="No competitor comparisons"
+            />
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-semibold text-amber-950">
+                Minimum video length
+              </span>
+              <select
+                className="mt-2 w-full rounded-md border border-amber-200 bg-white px-3 py-3 text-amber-950 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
+                name="minDurationSeconds"
+                onChange={(event) => setMinDurationSeconds(event.target.value)}
+                value={minDurationSeconds}
+              >
+                {durationOptions.map((option) => (
+                  <option key={option.label} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <fieldset>
+              <legend className="text-sm font-semibold text-amber-950">
+                Allowed platforms
+              </legend>
+              <div className="mt-2 grid gap-2">
+                {platformOptions.map((platform) => (
+                  <label
+                    className="flex items-center gap-3 rounded-md border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-amber-950"
+                    key={platform.value}
+                  >
+                    <input
+                      className="h-4 w-4 accent-amber-600"
+                      defaultChecked
+                      name="allowedPlatforms"
+                      type="checkbox"
+                      value={platform.value}
+                    />
+                    {platform.label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          </div>
+        </section>
 
         <label className="block">
           <span className="text-sm font-semibold text-amber-950">
@@ -199,11 +328,24 @@ export function CampaignForm({ error }: { error?: string }) {
 
           <div>
             <h3 className="text-sm font-semibold text-amber-950">
+              Guidelines
+            </h3>
+            <div className="mt-2 space-y-2 text-sm leading-6 text-amber-950/75">
+              <PreviewLine label="Mentions" values={requiredMentions} />
+              <PreviewLine label="Hashtags" values={requiredHashtags} />
+              <PreviewLine label="Tags" values={requiredTags} />
+              <PreviewLine label="Dos" values={dos} />
+              <PreviewLine label="Don'ts" values={donts} />
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-amber-950">
               Instructions
             </h3>
             <p className="mt-2 whitespace-pre-line text-sm leading-6 text-amber-950/75">
               {instructions ||
-                "Creator dos, don'ts, hashtags, and required talking points will appear here."}
+                "Additional dos, don'ts, hashtags, and required talking points will appear here."}
             </p>
           </div>
         </div>
@@ -232,5 +374,90 @@ export function CampaignForm({ error }: { error?: string }) {
         </dl>
       </aside>
     </div>
+  );
+}
+
+function TagInput({
+  items,
+  label,
+  name,
+  onChange,
+  placeholder,
+  prefix,
+}: {
+  items: string[];
+  label: string;
+  name: string;
+  onChange: (items: string[]) => void;
+  placeholder: string;
+  prefix?: "#" | "@";
+}) {
+  const [value, setValue] = useState("");
+
+  function addItem() {
+    const normalized = normalizeTag(value, prefix);
+
+    if (!normalized || items.includes(normalized)) {
+      setValue("");
+      return;
+    }
+
+    onChange([...items, normalized]);
+    setValue("");
+  }
+
+  function removeItem(item: string) {
+    onChange(items.filter((existing) => existing !== item));
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addItem();
+    }
+  }
+
+  return (
+    <label className="block">
+      <span className="text-sm font-semibold text-amber-950">{label}</span>
+      <div className="mt-2 rounded-md border border-amber-200 bg-white px-3 py-2 focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-200">
+        <div className="flex flex-wrap gap-2">
+          {items.map((item) => (
+            <span
+              className="inline-flex items-center gap-2 rounded-md bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-950"
+              key={item}
+            >
+              {item}
+              <button
+                className="text-amber-900/70 hover:text-amber-950"
+                onClick={() => removeItem(item)}
+                type="button"
+              >
+                x
+              </button>
+              <input name={name} type="hidden" value={item} />
+            </span>
+          ))}
+        </div>
+        <input
+          className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-amber-950 outline-none placeholder:text-amber-900/35"
+          onBlur={addItem}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          type="text"
+          value={value}
+        />
+      </div>
+    </label>
+  );
+}
+
+function PreviewLine({ label, values }: { label: string; values: string[] }) {
+  return (
+    <p>
+      <span className="font-semibold">{label}:</span>{" "}
+      {values.length ? values.join(", ") : "None added"}
+    </p>
   );
 }

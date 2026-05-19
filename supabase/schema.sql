@@ -12,6 +12,7 @@ drop schema if exists private cascade;
 
 drop table if exists public.payouts cascade;
 drop table if exists public.videos cascade;
+drop table if exists public.content_guidelines cascade;
 drop table if exists public.campaigns cascade;
 drop table if exists public.creators cascade;
 drop table if exists public.businesses cascade;
@@ -74,6 +75,24 @@ create table public.campaigns (
   constraint campaigns_spent_lte_total check (spent_budget <= total_budget)
 );
 
+create table public.content_guidelines (
+  id uuid primary key default gen_random_uuid(),
+  campaign_id uuid not null references public.campaigns(id) on delete cascade,
+  required_mentions text[],
+  required_hashtags text[],
+  required_tags text[],
+  dos text[],
+  donts text[],
+  min_duration_seconds integer,
+  allowed_platforms text[] not null default array['youtube', 'tiktok', 'instagram'],
+  created_at timestamp with time zone not null default now(),
+  constraint content_guidelines_campaign_id_unique unique (campaign_id),
+  constraint content_guidelines_min_duration_positive check (
+    min_duration_seconds is null
+    or min_duration_seconds > 0
+  )
+);
+
 create table public.videos (
   id uuid primary key default gen_random_uuid(),
   campaign_id uuid not null references public.campaigns(id) on delete cascade,
@@ -108,6 +127,7 @@ create index creators_user_id_idx on public.creators(user_id);
 create index campaigns_business_id_idx on public.campaigns(business_id);
 create index campaigns_status_idx on public.campaigns(status);
 create index campaigns_expiry_idx on public.campaigns(expires_at) where expires_at is not null;
+create index content_guidelines_campaign_id_idx on public.content_guidelines(campaign_id);
 create index videos_campaign_id_idx on public.videos(campaign_id);
 create index videos_creator_id_idx on public.videos(creator_id);
 create index payouts_creator_id_idx on public.payouts(creator_id);
@@ -118,6 +138,7 @@ alter table public.businesses enable row level security;
 alter table public.terms_accepted enable row level security;
 alter table public.creators enable row level security;
 alter table public.campaigns enable row level security;
+alter table public.content_guidelines enable row level security;
 alter table public.videos enable row level security;
 alter table public.payouts enable row level security;
 
@@ -253,6 +274,26 @@ as $$
   );
 $$;
 
+create or replace function private.creator_can_read_active_campaign_guidelines(target_campaign_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select private.current_user_is_creator()
+    and exists (
+      select 1
+      from public.campaigns
+      where campaigns.id = target_campaign_id
+        and campaigns.status = 'active'
+        and (
+          campaigns.expires_at is null
+          or campaigns.expires_at > now()
+        )
+    );
+$$;
+
 insert into storage.buckets (id, name, public)
 values ('logos', 'logos', true)
 on conflict (id) do update set public = excluded.public;
@@ -386,6 +427,19 @@ create policy "Creators can read campaigns for own videos."
   for select
   to authenticated
   using (private.creator_can_read_campaign_for_video(id));
+
+create policy "Businesses can manage own content guidelines."
+  on public.content_guidelines
+  for all
+  to authenticated
+  using (private.business_can_access_campaign(campaign_id))
+  with check (private.business_can_access_campaign(campaign_id));
+
+create policy "Creators can read active campaign guidelines."
+  on public.content_guidelines
+  for select
+  to authenticated
+  using (private.creator_can_read_active_campaign_guidelines(campaign_id));
 
 create policy "Creators can read own videos."
   on public.videos

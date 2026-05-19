@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 
 type CampaignDetail = {
   brief: string;
+  content_guidelines: ContentGuidelines[] | null;
   cpm_rate: number | string;
   id: string;
   instructions: string;
@@ -16,6 +17,16 @@ type CampaignDetail = {
     category: string;
     logo_url: string | null;
   } | null;
+};
+
+type ContentGuidelines = {
+  allowed_platforms: string[] | null;
+  donts: string[] | null;
+  dos: string[] | null;
+  min_duration_seconds: number | null;
+  required_hashtags: string[] | null;
+  required_mentions: string[] | null;
+  required_tags: string[] | null;
 };
 
 const moneyFormatter = new Intl.NumberFormat("en-US", {
@@ -36,6 +47,29 @@ function initials(name: string) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+}
+
+function formatDuration(seconds: number | null) {
+  if (!seconds) {
+    return "No minimum";
+  }
+
+  if (seconds >= 60) {
+    const minutes = seconds / 60;
+    return `${Number.isInteger(minutes) ? minutes : minutes.toFixed(1)} min`;
+  }
+
+  return `${seconds}s`;
+}
+
+function formatPlatform(value: string) {
+  const labels: Record<string, string> = {
+    instagram: "Instagram",
+    tiktok: "TikTok",
+    youtube: "YouTube",
+  };
+
+  return labels[value] ?? value;
 }
 
 async function requireCreatorOnboardingComplete() {
@@ -70,7 +104,7 @@ export default async function CampaignDetailPage({
   const { data, error } = await supabase
     .from("campaigns")
     .select(
-      "id, title, brief, instructions, total_budget, spent_budget, cpm_rate, expires_at, businesses!inner(business_name, category, logo_url)",
+      "id, title, brief, instructions, total_budget, spent_budget, cpm_rate, expires_at, businesses!inner(business_name, category, logo_url), content_guidelines(required_mentions, required_hashtags, required_tags, dos, donts, min_duration_seconds, allowed_platforms)",
     )
     .eq("id", params.campaignId)
     .eq("status", "active")
@@ -82,6 +116,7 @@ export default async function CampaignDetailPage({
   }
 
   const campaign = data as unknown as CampaignDetail;
+  const guidelines = campaign.content_guidelines?.[0] ?? null;
   const businessName = campaign.businesses?.business_name ?? "Business";
   const businessCategory = campaign.businesses?.category ?? "Other";
   const totalBudget = toNumber(campaign.total_budget);
@@ -148,6 +183,59 @@ export default async function CampaignDetailPage({
                   {campaign.instructions}
                 </p>
               </section>
+              {guidelines ? (
+                <section className="rounded-lg border border-indigo-200 bg-indigo-50 p-5">
+                  <h2 className="text-base font-semibold">
+                    Content Guidelines
+                  </h2>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <GuidelineList
+                      icon="✓"
+                      items={guidelines.required_mentions}
+                      title="Required mentions"
+                    />
+                    <GuidelineList
+                      icon="#"
+                      items={guidelines.required_hashtags}
+                      title="Required hashtags"
+                    />
+                    <GuidelineList
+                      icon="@"
+                      items={guidelines.required_tags}
+                      title="Required tags"
+                    />
+                    <GuidelineList
+                      icon="✓"
+                      items={guidelines.dos}
+                      title="Dos"
+                    />
+                    <GuidelineList
+                      icon="✗"
+                      items={guidelines.donts}
+                      title="Don'ts"
+                    />
+                    <GuidelineList
+                      icon="✓"
+                      items={guidelines.allowed_platforms?.map(formatPlatform)}
+                      title="Allowed platforms"
+                    />
+                    <div className="rounded-md border border-indigo-200 bg-white p-4">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+                        <span
+                          aria-hidden="true"
+                          className="flex h-6 w-6 items-center justify-center rounded-sm bg-indigo-100 text-indigo-700"
+                        >
+                          ⏱
+                        </span>
+                        Minimum duration
+                      </div>
+                      <p className="mt-3 text-sm text-slate-700">
+                        {formatDuration(guidelines.min_duration_seconds)}
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              ) : null}
             </div>
 
             <aside className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
@@ -184,5 +272,38 @@ export default async function CampaignDetailPage({
         </div>
       </section>
     </main>
+  );
+}
+
+function GuidelineList({
+  icon,
+  items,
+  title,
+}: {
+  icon: string;
+  items: string[] | null | undefined;
+  title: string;
+}) {
+  return (
+    <div className="rounded-md border border-indigo-200 bg-white p-4">
+      <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+        <span
+          aria-hidden="true"
+          className="flex h-6 w-6 items-center justify-center rounded-sm bg-indigo-100 text-indigo-700"
+        >
+          {icon}
+        </span>
+        {title}
+      </div>
+      {items?.length ? (
+        <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
+          {items.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-sm text-slate-500">None specified</p>
+      )}
+    </div>
   );
 }
