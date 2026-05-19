@@ -11,6 +11,7 @@ drop function if exists public.handle_new_user();
 drop schema if exists private cascade;
 
 drop table if exists public.payouts cascade;
+drop table if exists public.video_history cascade;
 drop table if exists public.videos cascade;
 drop table if exists public.content_guidelines cascade;
 drop table if exists public.campaigns cascade;
@@ -112,6 +113,15 @@ create table public.videos (
   )
 );
 
+create table public.video_history (
+  id uuid primary key default gen_random_uuid(),
+  video_id uuid not null references public.videos(id) on delete cascade,
+  status text not null,
+  note text,
+  changed_by uuid references public.profiles(id) on delete set null,
+  created_at timestamp with time zone not null default now()
+);
+
 create table public.payouts (
   id uuid primary key default gen_random_uuid(),
   creator_id uuid not null references public.creators(id) on delete cascade,
@@ -130,6 +140,8 @@ create index campaigns_expiry_idx on public.campaigns(expires_at) where expires_
 create index content_guidelines_campaign_id_idx on public.content_guidelines(campaign_id);
 create index videos_campaign_id_idx on public.videos(campaign_id);
 create index videos_creator_id_idx on public.videos(creator_id);
+create index video_history_video_id_idx on public.video_history(video_id);
+create index video_history_created_at_idx on public.video_history(created_at);
 create index payouts_creator_id_idx on public.payouts(creator_id);
 create index payouts_video_id_idx on public.payouts(video_id);
 
@@ -140,6 +152,7 @@ alter table public.creators enable row level security;
 alter table public.campaigns enable row level security;
 alter table public.content_guidelines enable row level security;
 alter table public.videos enable row level security;
+alter table public.video_history enable row level security;
 alter table public.payouts enable row level security;
 
 create schema private;
@@ -292,6 +305,25 @@ as $$
           or campaigns.expires_at > now()
         )
     );
+$$;
+
+create or replace function private.record_video_status_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.video_history (video_id, status, changed_by, note)
+  values (
+    new.id,
+    new.status,
+    null,
+    'Status changed from ' || old.status || ' to ' || new.status
+  );
+
+  return new;
+end;
 $$;
 
 insert into storage.buckets (id, name, public)
@@ -498,6 +530,25 @@ create policy "Businesses can review videos for own campaigns."
   using (private.business_can_access_campaign(campaign_id))
   with check (private.business_can_access_campaign(campaign_id));
 
+create policy "Creators can read own video history."
+  on public.video_history
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.videos
+      where videos.id = video_history.video_id
+        and private.is_creator_owner(videos.creator_id)
+    )
+  );
+
+create policy "Businesses can read campaign video history."
+  on public.video_history
+  for select
+  to authenticated
+  using (private.business_can_access_video(video_id));
+
 create policy "Creators can read own payouts."
   on public.payouts
   for select
@@ -547,5 +598,11 @@ revoke execute on function public.handle_new_user() from public;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+create trigger on_video_status_change
+  after update on public.videos
+  for each row
+  when (new.status is distinct from old.status)
+  execute function private.record_video_status_change();
 
 commit;

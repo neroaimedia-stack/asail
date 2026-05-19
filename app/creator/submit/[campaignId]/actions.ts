@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { recordVideoHistory } from "@/lib/video-history";
 
 type Platform = "youtube" | "tiktok" | "instagram";
 
@@ -83,17 +84,28 @@ export async function submitVideo(campaignId: string, formData: FormData) {
     redirect("/creator/browse");
   }
 
-  const { error } = await supabase.from("videos").insert({
-    campaign_id: campaign.id,
-    creator_id: creator.id,
-    platform,
-    status: "pending",
-    video_url: normalizedUrl,
-  });
+  const { data: video, error } = await supabase
+    .from("videos")
+    .insert({
+      campaign_id: campaign.id,
+      creator_id: creator.id,
+      platform,
+      status: "pending",
+      video_url: normalizedUrl,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     redirectWithError(campaignId, error.message);
   }
+
+  await recordVideoHistory({
+    changedBy: user.id,
+    note: "Submitted by creator",
+    status: "pending",
+    videoId: video.id,
+  });
 
   revalidatePath("/creator/dashboard");
   redirect("/creator/dashboard?message=Video%20submitted%20for%20review.");

@@ -46,11 +46,10 @@ function getEmbedUrl(url: string) {
   return null;
 }
 
-function formatDate(value: string) {
+function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
+    dateStyle: "medium",
+    timeStyle: "short",
   }).format(new Date(value));
 }
 
@@ -121,7 +120,7 @@ export function ReviewQueue({
           <div>
             <dt className="font-semibold text-amber-950">Submitted</dt>
             <dd className="mt-1 text-amber-900/75">
-              {formatDate(current.submittedAt)}
+              {formatDateTime(current.submittedAt)}
             </dd>
           </div>
           <div>

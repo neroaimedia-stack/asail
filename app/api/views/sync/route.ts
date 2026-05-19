@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { recordVideoHistory } from "@/lib/video-history";
 
 export const dynamic = "force-dynamic";
 
@@ -192,6 +193,12 @@ export async function POST(request: NextRequest) {
       if (updateError) {
         throw new Error(updateError.message);
       }
+
+      await recordVideoHistory({
+        note: `Views updated to ${viewCount}`,
+        status: "accepted",
+        videoId: video.id,
+      });
 
       updated += 1;
     } catch (error) {

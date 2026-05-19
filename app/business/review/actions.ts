@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { recordVideoHistory } from "@/lib/video-history";
 
 async function getBusinessId() {
   const supabase = createClient();
@@ -24,7 +25,7 @@ async function getBusinessId() {
     redirect("/business/onboarding");
   }
 
-  return { businessId: business.id as string, supabase };
+  return { businessId: business.id as string, supabase, userId: user.id };
 }
 
 async function canReviewVideo(videoId: string, businessId: string) {
@@ -47,7 +48,7 @@ export async function acceptVideo(formData: FormData) {
     redirect("/business/review");
   }
 
-  const { businessId, supabase } = await getBusinessId();
+  const { businessId, supabase, userId } = await getBusinessId();
 
   if (!(await canReviewVideo(videoId, businessId))) {
     redirect("/business/review");
@@ -60,6 +61,13 @@ export async function acceptVideo(formData: FormData) {
       status: "accepted",
     })
     .eq("id", videoId);
+
+  await recordVideoHistory({
+    changedBy: userId,
+    note: "Accepted by business",
+    status: "accepted",
+    videoId,
+  });
 
   revalidatePath("/business/review");
   revalidatePath("/business/dashboard");
@@ -80,7 +88,7 @@ export async function rejectVideo(formData: FormData) {
     redirect("/business/review?error=Add%20a%20rejection%20reason.");
   }
 
-  const { businessId, supabase } = await getBusinessId();
+  const { businessId, supabase, userId } = await getBusinessId();
 
   if (!(await canReviewVideo(videoId, businessId))) {
     redirect("/business/review");
@@ -94,6 +102,13 @@ export async function rejectVideo(formData: FormData) {
       status: "rejected",
     })
     .eq("id", videoId);
+
+  await recordVideoHistory({
+    changedBy: userId,
+    note: `Rejected: ${reason}`,
+    status: "rejected",
+    videoId,
+  });
 
   revalidatePath("/business/review");
   revalidatePath("/business/dashboard");

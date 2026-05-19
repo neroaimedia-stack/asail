@@ -19,6 +19,12 @@ type RawVideo = {
   } | null;
 };
 
+type RawHistory = {
+  created_at: string;
+  note: string | null;
+  video_id: string;
+};
+
 async function getPendingVideos() {
   const supabase = createClient();
   const {
@@ -52,14 +58,36 @@ async function getPendingVideos() {
     throw new Error(error.message);
   }
 
-  const videos = ((data ?? []) as unknown as RawVideo[]).map(
+  const rawVideos = (data ?? []) as unknown as RawVideo[];
+  const videoIds = rawVideos.map((video) => video.id);
+  const { data: historyData, error: historyError } = videoIds.length
+    ? await supabase
+        .from("video_history")
+        .select("video_id, note, created_at")
+        .in("video_id", videoIds)
+        .eq("note", "Submitted by creator")
+        .order("created_at", { ascending: true })
+    : { data: [], error: null };
+
+  if (historyError) {
+    throw new Error(historyError.message);
+  }
+
+  const submittedAtByVideoId = new Map(
+    ((historyData ?? []) as RawHistory[]).map((entry) => [
+      entry.video_id,
+      entry.created_at,
+    ]),
+  );
+
+  const videos = rawVideos.map(
     (video): ReviewVideo => ({
       campaignTitle: video.campaigns?.title ?? "Untitled campaign",
       creatorHandle: video.creators?.handle ?? "@creator",
       creatorName: video.creators?.profiles?.full_name ?? "Creator",
       id: video.id,
       platform: video.platform,
-      submittedAt: video.submitted_at,
+      submittedAt: submittedAtByVideoId.get(video.id) ?? video.submitted_at,
       videoUrl: video.video_url,
     }),
   );

@@ -17,6 +17,12 @@ type RawVideo = {
       business_name: string;
     } | null;
   } | null;
+  video_history: Array<{
+    created_at: string;
+    id: string;
+    note: string | null;
+    status: string;
+  }> | null;
 };
 
 const moneyFormatter = new Intl.NumberFormat("en-US", {
@@ -69,7 +75,7 @@ async function getCreatorDashboardData() {
   const { data, error } = await supabase
     .from("videos")
     .select(
-      "id, status, view_count, payout_amount, payout_status, submitted_at, rejection_reason, campaigns!inner(title, businesses!inner(business_name))",
+      "id, status, view_count, payout_amount, payout_status, submitted_at, rejection_reason, campaigns!inner(title, businesses!inner(business_name)), video_history(id, status, note, created_at)",
     )
     .eq("creator_id", creator.id)
     .order("submitted_at", { ascending: false });
@@ -84,6 +90,18 @@ async function getCreatorDashboardData() {
       campaignTitle: video.campaigns?.title ?? "Campaign",
       earnings: toNumber(video.payout_amount),
       id: video.id,
+      history: (video.video_history ?? [])
+        .map((entry) => ({
+          createdAt: entry.created_at,
+          id: entry.id,
+          note: entry.note,
+          status: entry.status,
+        }))
+        .sort(
+          (first, second) =>
+            new Date(first.createdAt).getTime() -
+            new Date(second.createdAt).getTime(),
+        ),
       payoutStatus: video.payout_status,
       rejectionReason: video.rejection_reason,
       status: video.status,
