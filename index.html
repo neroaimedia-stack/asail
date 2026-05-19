@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CreatorVault Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <a class="brand" href="#" data-page="dashboard" aria-label="CreatorVault dashboard">
+          <span class="brand-mark">CV</span>
+          <span>CreatorVault</span>
+        </a>
+
+        <label class="search-box">
+          <span data-icon="search"></span>
+          <input id="globalSearch" type="search" placeholder="Search campaigns, content..." />
+          <kbd>/</kbd>
+        </label>
+
+        <nav class="nav-stack" aria-label="Main navigation">
+          <p>Workspace</p>
+          <button class="nav-item active" data-page="dashboard"><span data-icon="layout-dashboard"></span>Dashboard</button>
+          <button class="nav-item" data-page="discover"><span data-icon="compass"></span>Discover Brands <b id="discoverCount">6</b></button>
+          <button class="nav-item" data-page="active"><span data-icon="send"></span>Active</button>
+          <button class="nav-item" data-page="invitations"><span data-icon="mail-plus"></span>Invitations</button>
+          <p>Content & Earnings</p>
+          <button class="nav-item" data-page="content"><span data-icon="clapperboard"></span>My content</button>
+          <button class="nav-item" data-page="earnings"><span data-icon="dollar-sign"></span>Earnings</button>
+          <button class="nav-item" data-page="payouts"><span data-icon="wallet"></span>Payouts</button>
+          <p>Inbox</p>
+          <button class="nav-item" data-page="messages"><span data-icon="message-square"></span>Messages</button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button class="nav-item" data-page="settings"><span data-icon="settings"></span>Profile & settings</button>
+          <button class="nav-item" data-page="help"><span data-icon="circle-help"></span>Help & contact</button>
+          <div class="user-card">
+            <img alt="" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=96&q=80" />
+            <div>
+              <strong>Nero Media</strong>
+              <span>@neromedia</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="main-shell">
+        <header class="topbar">
+          <button class="icon-button menu-button" id="menuButton" aria-label="Open menu"><span data-icon="menu"></span></button>
+          <div class="breadcrumbs" id="breadcrumbs">Workspace <span data-icon="chevron-right"></span> <strong>Dashboard</strong></div>
+          <div class="topbar-actions">
+            <button class="ghost-button" id="inviteButton"><span data-icon="key-round"></span> Invitation code</button>
+            <button class="icon-button" id="notifyButton" aria-label="Notifications"><span data-icon="bell"></span></button>
+            <button class="primary-button" id="uploadButton"><span data-icon="upload"></span>Submit content</button>
+          </div>
+        </header>
+
+        <main class="page-wrap">
+          <section class="page active" id="page-dashboard" data-title="Dashboard" data-section="Workspace"></section>
+          <section class="page" id="page-discover" data-title="Discover Brands" data-section="Campaigns">
+            <div class="page-heading compact">
+              <div>
+                <h1>Campaigns</h1>
+                <p>Discover new opportunities, track your progress, and manage your portfolio.</p>
+              </div>
+            </div>
+            <div class="discover-toolbar">
+              <label class="campaign-search">
+                <span data-icon="search"></span>
+                <input id="campaignSearch" type="search" placeholder="Search campaigns..." />
+              </label>
+              <div class="live-pill"><i></i><strong id="liveCount">6</strong> live</div>
+              <div class="segmented">
+                <button class="active" data-tab="all">All</button>
+                <button data-tab="saved"><span data-icon="bookmark"></span>Saved (<span id="savedCount">0</span>)</button>
+              </div>
+            </div>
+            <div class="filter-bar">
+              <button class="select-button" data-filter="all">All Categories <span data-icon="chevron-down"></span></button>
+              <button class="filter-button" id="filtersButton"><span data-icon="sliders-horizontal"></span>Filters</button>
+            </div>
+            <p class="result-count" id="resultCount">Showing 6 of 6 campaigns</p>
+            <div class="campaign-grid" id="campaignGrid"></div>
+          </section>
+          <section class="page" id="page-active" data-title="Active" data-section="Campaigns"></section>
+          <section class="page" id="page-invitations" data-title="Invitations" data-section="Campaigns"></section>
+          <section class="page" id="page-content" data-title="My content" data-section="Content & Earnings"></section>
+          <section class="page" id="page-earnings" data-title="Earnings" data-section="Content & Earnings"></section>
+          <section class="page" id="page-payouts" data-title="Payouts" data-section="Content & Earnings"></section>
+          <section class="page" id="page-messages" data-title="Messages" data-section="Inbox"></section>
+          <section class="page" id="page-settings" data-title="Profile & settings" data-section="Account"></section>
+          <section class="page" id="page-help" data-title="Help & contact" data-section="Support"></section>
+        </main>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="modalBackdrop" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <button class="icon-button modal-close" id="modalClose" aria-label="Close"><span data-icon="x"></span></button>
+        <div id="modalContent"></div>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
