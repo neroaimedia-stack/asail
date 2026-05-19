@@ -140,6 +140,9 @@ create index campaigns_expiry_idx on public.campaigns(expires_at) where expires_
 create index content_guidelines_campaign_id_idx on public.content_guidelines(campaign_id);
 create index videos_campaign_id_idx on public.videos(campaign_id);
 create index videos_creator_id_idx on public.videos(creator_id);
+create index videos_creator_campaign_status_idx on public.videos(creator_id, campaign_id, status);
+create index videos_creator_submitted_at_idx on public.videos(creator_id, submitted_at desc);
+create index videos_creator_campaign_submitted_at_idx on public.videos(creator_id, campaign_id, submitted_at desc);
 create index video_history_video_id_idx on public.video_history(video_id);
 create index video_history_created_at_idx on public.video_history(created_at);
 create index payouts_creator_id_idx on public.payouts(creator_id);

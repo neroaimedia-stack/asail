@@ -2,6 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SubmissionForm } from "./submission-form";
 import { createClient } from "@/lib/supabase/server";
+import {
+  type SubmissionLimitResult,
+  validateVideoSubmissionLimits,
+} from "@/lib/submission-limits";
 
 type Campaign = {
   brief: string;
@@ -51,7 +55,16 @@ async function getCampaignForSubmission(campaignId: string) {
     redirect("/creator/browse");
   }
 
-  return data as unknown as Campaign;
+  const campaign = data as unknown as Campaign;
+  const limitResult = await validateVideoSubmissionLimits({
+    campaignId: campaign.id,
+    creatorId: creator.id,
+  });
+
+  return {
+    campaign,
+    limitResult,
+  };
 }
 
 export default async function CreatorSubmitCampaignPage({
@@ -61,7 +74,10 @@ export default async function CreatorSubmitCampaignPage({
   params: { campaignId: string };
   searchParams?: { error?: string };
 }) {
-  const campaign = await getCampaignForSubmission(params.campaignId);
+  const { campaign, limitResult } = await getCampaignForSubmission(
+    params.campaignId,
+  );
+  const displayedError = searchParams?.error ?? limitResult.message ?? undefined;
 
   return (
     <main className="min-h-screen bg-indigo-50 px-6 py-8 text-slate-950">
@@ -102,11 +118,25 @@ export default async function CreatorSubmitCampaignPage({
         </div>
 
         <div className="mt-6">
-          <SubmissionForm
-            campaignId={campaign.id}
-            cpmRate={toNumber(campaign.cpm_rate)}
-            error={searchParams?.error}
-          />
+          {limitResult.blocksForm && limitResult.message ? (
+            <div className="rounded-lg border border-red-200 bg-white p-6">
+              <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+                {limitResult.message}
+              </p>
+              <Link
+                className="mt-5 inline-flex rounded-md bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                href="/creator/browse"
+              >
+                Browse other campaigns →
+              </Link>
+            </div>
+          ) : (
+            <SubmissionForm
+              campaignId={campaign.id}
+              cpmRate={toNumber(campaign.cpm_rate)}
+              error={displayedError}
+            />
+          )}
         </div>
       </section>
     </main>

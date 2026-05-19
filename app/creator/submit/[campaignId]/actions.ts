@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { validateVideoSubmissionLimits } from "@/lib/submission-limits";
 import { recordVideoHistory } from "@/lib/video-history";
 
 type Platform = "youtube" | "tiktok" | "instagram";
@@ -82,6 +83,15 @@ export async function submitVideo(campaignId: string, formData: FormData) {
 
   if (!campaign) {
     redirect("/creator/browse");
+  }
+
+  const limitResult = await validateVideoSubmissionLimits({
+    campaignId: campaign.id,
+    creatorId: creator.id,
+  });
+
+  if (!limitResult.ok && limitResult.message) {
+    redirectWithError(campaignId, limitResult.message);
   }
 
   const { data: video, error } = await supabase
