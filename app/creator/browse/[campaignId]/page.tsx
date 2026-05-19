@@ -70,10 +70,11 @@ export default async function CampaignDetailPage({
   const { data, error } = await supabase
     .from("campaigns")
     .select(
-      "id, title, brief, instructions, total_budget, spent_budget, cpm_rate, businesses!inner(business_name, category, logo_url)",
+      "id, title, brief, instructions, total_budget, spent_budget, cpm_rate, expires_at, businesses!inner(business_name, category, logo_url)",
     )
     .eq("id", params.campaignId)
     .eq("status", "active")
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
     .single();
 
   if (error || !data) {

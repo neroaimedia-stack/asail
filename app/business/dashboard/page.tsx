@@ -4,6 +4,7 @@ import { setCampaignStatus } from "./actions";
 import { createClient } from "@/lib/supabase/server";
 
 type Campaign = {
+  expires_at: string | null;
   id: string;
   title: string;
   status: "active" | "paused" | "completed";
@@ -47,6 +48,36 @@ function toNumber(value: number | string | null | undefined) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function formatExpiryDate(value: string | null) {
+  if (!value) {
+    return "No end date";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function expiryState(value: string | null) {
+  if (!value) {
+    return "none";
+  }
+
+  const now = new Date();
+  const expiresAt = new Date(value);
+
+  if (expiresAt < now) {
+    return "ended";
+  }
+
+  const threeDaysFromNow = new Date(now);
+  threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+
+  return expiresAt <= threeDaysFromNow ? "soon" : "normal";
+}
+
 async function getDashboardData() {
   const supabase = createClient();
   const {
@@ -81,7 +112,7 @@ async function getDashboardData() {
 
   const { data: campaignsData, error: campaignsError } = await supabase
     .from("campaigns")
-    .select("id, title, status, total_budget, spent_budget")
+    .select("id, title, status, total_budget, spent_budget, expires_at")
     .eq("business_id", business.id)
     .order("created_at", { ascending: false });
 
@@ -235,6 +266,7 @@ export default async function BusinessDashboardPage() {
                       <Th>Campaign name</Th>
                       <Th>Status</Th>
                       <Th>Budget remaining</Th>
+                      <Th>Ends</Th>
                       <Th>Videos pending review</Th>
                       <Th>Total views</Th>
                       <Th>Actions</Th>
@@ -248,6 +280,7 @@ export default async function BusinessDashboardPage() {
                       const nextStatus =
                         campaign.status === "active" ? "paused" : "active";
                       const canToggle = campaign.status !== "completed";
+                      const expiry = expiryState(campaign.expires_at);
 
                       return (
                         <tr className="align-middle" key={campaign.id}>
@@ -270,6 +303,21 @@ export default async function BusinessDashboardPage() {
                             </span>
                           </Td>
                           <Td>{moneyFormatter.format(budgetRemaining)}</Td>
+                          <Td>
+                            <span
+                              className={
+                                expiry === "ended"
+                                  ? "font-semibold text-red-700"
+                                  : expiry === "soon"
+                                    ? "font-semibold text-amber-700"
+                                    : "text-amber-950"
+                              }
+                            >
+                              {expiry === "ended"
+                                ? "Ended"
+                                : formatExpiryDate(campaign.expires_at)}
+                            </span>
+                          </Td>
                           <Td>{numberFormatter.format(campaign.pendingCount)}</Td>
                           <Td>{numberFormatter.format(campaign.totalViews)}</Td>
                           <Td>

@@ -65,7 +65,8 @@ export default async function CreatorBrowsePage({
     .select(
       "id, title, brief, total_budget, spent_budget, cpm_rate, created_at, businesses!inner(business_name, category, logo_url)",
     )
-    .eq("status", "active");
+    .eq("status", "active")
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
 
   if (selectedCategory !== "All" && categories.includes(selectedCategory)) {
     query = query.eq("businesses.category", selectedCategory);

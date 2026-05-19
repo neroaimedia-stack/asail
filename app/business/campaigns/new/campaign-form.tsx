@@ -24,12 +24,32 @@ function estimatedViews(totalBudget: string, cpmRate: string) {
   return Math.floor((budget / cpm) * 1000);
 }
 
+function minEndDateValue() {
+  const date = new Date();
+  date.setDate(date.getDate() + 7);
+  return date.toISOString().slice(0, 10);
+}
+
+function formatPreviewDate(value: string) {
+  if (!value) {
+    return "Not selected";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(`${value}T12:00:00`));
+}
+
 export function CampaignForm({ error }: { error?: string }) {
   const [title, setTitle] = useState("");
   const [brief, setBrief] = useState("");
   const [instructions, setInstructions] = useState("");
   const [totalBudget, setTotalBudget] = useState("");
   const [cpmRate, setCpmRate] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
+  const minEndDate = useMemo(() => minEndDateValue(), []);
 
   const coveredViews = useMemo(
     () => estimatedViews(totalBudget, cpmRate),
@@ -135,6 +155,24 @@ export function CampaignForm({ error }: { error?: string }) {
           </label>
         </div>
 
+        <label className="block">
+          <span className="text-sm font-semibold text-amber-950">
+            Campaign end date
+          </span>
+          <input
+            className="mt-2 w-full rounded-md border border-amber-200 bg-white px-3 py-3 text-amber-950 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
+            min={minEndDate}
+            name="expiresAt"
+            onChange={(event) => setExpiresAt(event.target.value)}
+            required
+            type="date"
+            value={expiresAt}
+          />
+          <span className="mt-2 block text-sm text-amber-900/70">
+            Campaigns must run for at least 7 days.
+          </span>
+        </label>
+
         <button
           className="w-full rounded-md bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300"
           type="submit"
@@ -183,6 +221,12 @@ export function CampaignForm({ error }: { error?: string }) {
             <dt className="text-amber-900/65">Estimated reach</dt>
             <dd className="mt-1 font-semibold text-amber-950">
               {viewsFormatter.format(coveredViews)} views
+            </dd>
+          </div>
+          <div className="col-span-2">
+            <dt className="text-amber-900/65">Ends</dt>
+            <dd className="mt-1 font-semibold text-amber-950">
+              {formatPreviewDate(expiresAt)}
             </dd>
           </div>
         </dl>

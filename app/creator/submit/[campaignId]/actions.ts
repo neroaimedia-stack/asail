@@ -76,6 +76,7 @@ export async function submitVideo(campaignId: string, formData: FormData) {
     .select("id")
     .eq("id", campaignId)
     .eq("status", "active")
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
     .maybeSingle();
 
   if (!campaign) {

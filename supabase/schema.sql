@@ -68,6 +68,8 @@ create table public.campaigns (
   spent_budget numeric not null default 0 check (spent_budget >= 0),
   cpm_rate numeric not null check (cpm_rate >= 0),
   status text not null default 'active' check (status in ('active', 'paused', 'completed')),
+  expires_at timestamp with time zone,
+  auto_expired boolean not null default false,
   created_at timestamp with time zone not null default now(),
   constraint campaigns_spent_lte_total check (spent_budget <= total_budget)
 );
@@ -105,6 +107,7 @@ create index terms_accepted_user_id_idx on public.terms_accepted(user_id);
 create index creators_user_id_idx on public.creators(user_id);
 create index campaigns_business_id_idx on public.campaigns(business_id);
 create index campaigns_status_idx on public.campaigns(status);
+create index campaigns_expiry_idx on public.campaigns(expires_at) where expires_at is not null;
 create index videos_campaign_id_idx on public.videos(campaign_id);
 create index videos_creator_id_idx on public.videos(creator_id);
 create index payouts_creator_id_idx on public.payouts(creator_id);

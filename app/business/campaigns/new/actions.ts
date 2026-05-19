@@ -19,6 +19,13 @@ function redirectWithError(message: string): never {
   redirect(`/business/campaigns/new?error=${encodeURIComponent(message)}`);
 }
 
+function minCampaignEndDate() {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + 7);
+  return date;
+}
+
 export async function createCampaign(formData: FormData) {
   const supabase = createClient();
   const {
@@ -48,6 +55,7 @@ export async function createCampaign(formData: FormData) {
   const instructions = getString(formData, "instructions");
   const totalBudget = getNumber(formData, "totalBudget");
   const cpmRate = getNumber(formData, "cpmRate");
+  const expiresAtValue = getString(formData, "expiresAt");
 
   if (!title || !brief || !instructions) {
     redirectWithError("Fill in the campaign title, brief, and instructions.");
@@ -61,6 +69,20 @@ export async function createCampaign(formData: FormData) {
     redirectWithError("Enter a CPM rate greater than 0.");
   }
 
+  if (!expiresAtValue) {
+    redirectWithError("Choose a campaign end date.");
+  }
+
+  const expiresAt = new Date(`${expiresAtValue}T23:59:59.999Z`);
+
+  if (Number.isNaN(expiresAt.getTime())) {
+    redirectWithError("Choose a valid campaign end date.");
+  }
+
+  if (expiresAt < minCampaignEndDate()) {
+    redirectWithError("Campaign end date must be at least 7 days from today.");
+  }
+
   const { error } = await supabase.from("campaigns").insert({
     business_id: business.id,
     title,
@@ -68,6 +90,7 @@ export async function createCampaign(formData: FormData) {
     instructions,
     total_budget: totalBudget,
     cpm_rate: cpmRate,
+    expires_at: expiresAt.toISOString(),
     status: "active",
   });
 

@@ -44,6 +44,7 @@ async function getCampaignForSubmission(campaignId: string) {
     .select("id, title, brief, instructions, cpm_rate, businesses!inner(business_name)")
     .eq("id", campaignId)
     .eq("status", "active")
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
     .single();
 
   if (error || !data) {
