@@ -15,6 +15,7 @@ drop table if exists public.videos cascade;
 drop table if exists public.campaigns cascade;
 drop table if exists public.creators cascade;
 drop table if exists public.businesses cascade;
+drop table if exists public.terms_accepted cascade;
 drop table if exists public.profiles cascade;
 drop type if exists public.user_role cascade;
 
@@ -35,6 +36,15 @@ create table public.businesses (
   logo_url text,
   created_at timestamp with time zone not null default now(),
   constraint businesses_user_id_unique unique (user_id)
+);
+
+create table public.terms_accepted (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  accepted_at timestamp with time zone not null default now(),
+  ip_address text,
+  terms_version text not null default '1.0',
+  constraint terms_accepted_user_id_unique unique (user_id)
 );
 
 create table public.creators (
@@ -91,6 +101,7 @@ create table public.payouts (
 );
 
 create index businesses_user_id_idx on public.businesses(user_id);
+create index terms_accepted_user_id_idx on public.terms_accepted(user_id);
 create index creators_user_id_idx on public.creators(user_id);
 create index campaigns_business_id_idx on public.campaigns(business_id);
 create index campaigns_status_idx on public.campaigns(status);
@@ -101,6 +112,7 @@ create index payouts_video_id_idx on public.payouts(video_id);
 
 alter table public.profiles enable row level security;
 alter table public.businesses enable row level security;
+alter table public.terms_accepted enable row level security;
 alter table public.creators enable row level security;
 alter table public.campaigns enable row level security;
 alter table public.videos enable row level security;
@@ -305,6 +317,18 @@ create policy "Businesses can update own business."
   for update
   to authenticated
   using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
+
+create policy "Users can read own terms acceptance."
+  on public.terms_accepted
+  for select
+  to authenticated
+  using (user_id = (select auth.uid()));
+
+create policy "Authenticated users can insert terms acceptance."
+  on public.terms_accepted
+  for insert
+  to authenticated
   with check (user_id = (select auth.uid()));
 
 create policy "Creators can read businesses with active campaigns."

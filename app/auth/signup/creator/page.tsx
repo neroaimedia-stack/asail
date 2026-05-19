@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signupCreator } from "@/app/auth/actions";
+import { TermsConsent } from "@/app/auth/signup/terms-consent";
 
 const categories = ["Food", "Travel", "Tech", "Lifestyle", "Other"];
 
@@ -89,12 +90,7 @@ export default function CreatorSignupPage({
               ))}
             </div>
           </fieldset>
-          <button
-            className="w-full rounded-md bg-coral px-4 py-3 text-sm font-semibold text-white transition hover:bg-coral/90"
-            type="submit"
-          >
-            Sign up as creator
-          </button>
+          <TermsConsent submitLabel="Sign up as creator" />
         </form>
         <p className="mt-6 text-sm text-ink/65">
           Already have an account?{" "}

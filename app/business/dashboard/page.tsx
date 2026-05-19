@@ -57,6 +57,18 @@ async function getDashboardData() {
     redirect("/auth/login?redirectedFrom=/business/dashboard");
   }
 
+  const { data: termsAcceptance } = await supabase
+    .from("terms_accepted")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!termsAcceptance) {
+    redirect(
+      "/auth/signup/business?error=Please%20accept%20the%20Terms%20of%20Service%20and%20Privacy%20Policy.",
+    );
+  }
+
   const { data: business } = await supabase
     .from("businesses")
     .select("id, business_name")

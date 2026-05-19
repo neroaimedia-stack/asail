@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signupBusiness } from "@/app/auth/actions";
+import { TermsConsent } from "@/app/auth/signup/terms-consent";
 
 const categories = ["Restaurant", "Hotel", "SaaS", "Retail", "Other"];
 
@@ -87,12 +88,7 @@ export default function BusinessSignupPage({
               ))}
             </select>
           </label>
-          <button
-            className="w-full rounded-md bg-sea px-4 py-3 text-sm font-semibold text-white transition hover:bg-sea/90"
-            type="submit"
-          >
-            Sign up as business
-          </button>
+          <TermsConsent submitLabel="Sign up as business" />
         </form>
         <p className="mt-6 text-sm text-ink/65">
           Already have an account?{" "}

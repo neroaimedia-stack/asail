@@ -44,6 +44,18 @@ async function getCreatorDashboardData() {
     redirect("/auth/login?redirectedFrom=/creator/dashboard");
   }
 
+  const { data: termsAcceptance } = await supabase
+    .from("terms_accepted")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!termsAcceptance) {
+    redirect(
+      "/auth/signup/creator?error=Please%20accept%20the%20Terms%20of%20Service%20and%20Privacy%20Policy.",
+    );
+  }
+
   const { data: creator } = await supabase
     .from("creators")
     .select("id, handle")

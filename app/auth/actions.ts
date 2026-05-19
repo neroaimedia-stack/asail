@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 type UserRole = "business" | "creator";
@@ -28,43 +30,57 @@ function redirectWithError(pathname: string, message: string): never {
   redirect(`${pathname}?error=${encodeURIComponent(message)}`);
 }
 
-async function createBusinessProfile({
-  userId,
+function hasAcceptedTerms(formData: FormData) {
+  return formValue(formData, "termsAccepted") === "yes";
+}
+
+function getRequestIp() {
+  const headerStore = headers();
+  const forwardedFor = headerStore.get("x-forwarded-for");
+
+  if (forwardedFor) {
+    return forwardedFor.split(",")[0]?.trim() || null;
+  }
+
+  return headerStore.get("x-real-ip");
+}
+
+async function recordSignupAcceptance({
   fullName,
+  ipAddress,
+  role,
+  userId,
 }: {
-  userId: string;
   fullName: string;
+  ipAddress: string | null;
+  role: UserRole;
+  userId: string;
 }) {
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   const { error: profileError } = await supabase.from("profiles").upsert({
     id: userId,
-    role: "business",
+    role,
     full_name: fullName,
   });
 
   if (profileError) {
     throw profileError;
   }
-}
 
-async function createCreatorProfile({
-  userId,
-  fullName,
-}: {
-  userId: string;
-  fullName: string;
-}) {
-  const supabase = createClient();
+  const { error: termsError } = await supabase
+    .from("terms_accepted")
+    .upsert(
+      {
+        user_id: userId,
+        ip_address: ipAddress,
+        terms_version: "1.0",
+      },
+      { onConflict: "user_id" },
+    );
 
-  const { error: profileError } = await supabase.from("profiles").upsert({
-    id: userId,
-    role: "creator",
-    full_name: fullName,
-  });
-
-  if (profileError) {
-    throw profileError;
+  if (termsError) {
+    throw termsError;
   }
 }
 
@@ -140,6 +156,13 @@ export async function signupBusiness(formData: FormData) {
   const businessName = formValue(formData, "businessName");
   const businessCategory = formValue(formData, "businessCategory");
 
+  if (!hasAcceptedTerms(formData)) {
+    redirectWithError(
+      "/auth/signup/business",
+      "You must agree to the Terms of Service and Privacy Policy.",
+    );
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -157,12 +180,16 @@ export async function signupBusiness(formData: FormData) {
     redirectWithError("/auth/signup/business", error.message);
   }
 
-  if (data.user && data.session) {
-    await createBusinessProfile({
+  if (data.user) {
+    await recordSignupAcceptance({
       userId: data.user.id,
       fullName,
+      ipAddress: getRequestIp(),
+      role: "business",
     });
+  }
 
+  if (data.user && data.session) {
     revalidatePath("/", "layout");
     redirect("/business/onboarding");
   }
@@ -181,6 +208,13 @@ export async function signupCreator(formData: FormData) {
   const socialHandle = formValue(formData, "socialHandle");
   const contentCategories = formValues(formData, "contentCategories");
 
+  if (!hasAcceptedTerms(formData)) {
+    redirectWithError(
+      "/auth/signup/creator",
+      "You must agree to the Terms of Service and Privacy Policy.",
+    );
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -198,12 +232,16 @@ export async function signupCreator(formData: FormData) {
     redirectWithError("/auth/signup/creator", error.message);
   }
 
-  if (data.user && data.session) {
-    await createCreatorProfile({
+  if (data.user) {
+    await recordSignupAcceptance({
       userId: data.user.id,
       fullName,
+      ipAddress: getRequestIp(),
+      role: "creator",
     });
+  }
 
+  if (data.user && data.session) {
     revalidatePath("/", "layout");
     redirect("/creator/onboarding");
   }
