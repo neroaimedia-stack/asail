@@ -18,6 +18,7 @@ drop table if exists public.campaigns cascade;
 drop table if exists public.creators cascade;
 drop table if exists public.businesses cascade;
 drop table if exists public.terms_accepted cascade;
+drop table if exists public.notifications cascade;
 drop table if exists public.profiles cascade;
 drop type if exists public.user_role cascade;
 
@@ -162,6 +163,31 @@ create table public.disputes (
   constraint disputes_video_id_unique unique (video_id)
 );
 
+create table public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  type text not null check (
+    type in (
+      'video_submitted',
+      'video_accepted',
+      'video_rejected',
+      'dispute_opened',
+      'dispute_resolved',
+      'campaign_expiring',
+      'campaign_expired',
+      'invitation_received',
+      'invitation_accepted',
+      'new_message',
+      'payout_sent'
+    )
+  ),
+  title text not null,
+  body text not null,
+  link text,
+  read boolean not null default false,
+  created_at timestamp with time zone not null default now()
+);
+
 create table public.payouts (
   id uuid primary key default gen_random_uuid(),
   creator_id uuid not null references public.creators(id) on delete cascade,
@@ -190,6 +216,7 @@ create index video_history_created_at_idx on public.video_history(created_at);
 create index disputes_creator_id_idx on public.disputes(creator_id);
 create index disputes_business_id_idx on public.disputes(business_id);
 create index disputes_status_idx on public.disputes(status);
+create index notifications_user_id_idx on public.notifications(user_id, created_at desc);
 create index payouts_creator_id_idx on public.payouts(creator_id);
 create index payouts_video_id_idx on public.payouts(video_id);
 
@@ -202,6 +229,7 @@ alter table public.content_guidelines enable row level security;
 alter table public.videos enable row level security;
 alter table public.video_history enable row level security;
 alter table public.disputes enable row level security;
+alter table public.notifications enable row level security;
 alter table public.payouts enable row level security;
 
 create schema private;
@@ -656,6 +684,19 @@ create policy "Admins can update disputes."
   using (private.current_user_is_admin())
   with check (private.current_user_is_admin());
 
+create policy "Users can read own notifications."
+  on public.notifications
+  for select
+  to authenticated
+  using (user_id = (select auth.uid()));
+
+create policy "Users can update own notifications."
+  on public.notifications
+  for update
+  to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
+
 create policy "Creators can read own payouts."
   on public.payouts
   for select
@@ -829,6 +870,40 @@ revoke all on function public.search_creators(text) from anon;
 revoke all on function public.search_creators(text) from authenticated;
 grant execute on function public.search_campaigns(text) to service_role;
 grant execute on function public.search_creators(text) to service_role;
+
+create or replace function public.create_notification(
+  target_user_id uuid,
+  notification_type text,
+  notification_title text,
+  notification_body text,
+  notification_link text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  inserted_id uuid;
+begin
+  insert into public.notifications (user_id, type, title, body, link)
+  values (
+    target_user_id,
+    notification_type,
+    notification_title,
+    notification_body,
+    notification_link
+  )
+  returning id into inserted_id;
+
+  return inserted_id;
+end;
+$$;
+
+revoke execute on function public.create_notification(uuid, text, text, text, text) from public;
+revoke execute on function public.create_notification(uuid, text, text, text, text) from anon;
+revoke execute on function public.create_notification(uuid, text, text, text, text) from authenticated;
+grant execute on function public.create_notification(uuid, text, text, text, text) to service_role;
 
 create or replace function public.handle_new_user()
 returns trigger

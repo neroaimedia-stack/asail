@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createNotification } from "@/lib/notifications";
 import { recordVideoHistory } from "@/lib/video-history";
 
 async function getBusinessId() {
@@ -41,6 +42,22 @@ async function canReviewVideo(videoId: string, businessId: string) {
   return Boolean(data);
 }
 
+async function getReviewNotificationContext(videoId: string) {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("videos")
+    .select("id, creators!inner(user_id), campaigns!inner(title)")
+    .eq("id", videoId)
+    .maybeSingle();
+
+  return data as unknown as
+    | {
+        campaigns: { title: string } | null;
+        creators: { user_id: string } | null;
+      }
+    | null;
+}
+
 export async function acceptVideo(formData: FormData) {
   const videoId = formData.get("videoId");
 
@@ -68,6 +85,17 @@ export async function acceptVideo(formData: FormData) {
     status: "accepted",
     videoId,
   });
+
+  const notificationContext = await getReviewNotificationContext(videoId);
+  if (notificationContext?.creators?.user_id) {
+    await createNotification({
+      body: `Your video for ${notificationContext.campaigns?.title ?? "this campaign"} was accepted. Views will be tracked automatically.`,
+      link: "/creator/dashboard",
+      title: "Your video was accepted!",
+      type: "video_accepted",
+      userId: notificationContext.creators.user_id,
+    });
+  }
 
   revalidatePath("/business/review");
   revalidatePath("/business/dashboard");
@@ -109,6 +137,17 @@ export async function rejectVideo(formData: FormData) {
     status: "rejected",
     videoId,
   });
+
+  const notificationContext = await getReviewNotificationContext(videoId);
+  if (notificationContext?.creators?.user_id) {
+    await createNotification({
+      body: `Your video for ${notificationContext.campaigns?.title ?? "this campaign"} was not accepted. Reason: ${reason}`,
+      link: "/creator/dashboard",
+      title: "Video not accepted",
+      type: "video_rejected",
+      userId: notificationContext.creators.user_id,
+    });
+  }
 
   revalidatePath("/business/review");
   revalidatePath("/business/dashboard");

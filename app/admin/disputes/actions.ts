@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createNotification } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { recordVideoHistory } from "@/lib/video-history";
@@ -52,7 +53,7 @@ export async function resolveDispute(formData: FormData) {
   const admin = createAdminClient();
   const { data: dispute, error: disputeError } = await admin
     .from("disputes")
-    .select("id, video_id, status")
+    .select("id, video_id, status, creators!inner(user_id)")
     .eq("id", disputeId)
     .maybeSingle();
 
@@ -61,6 +62,8 @@ export async function resolveDispute(formData: FormData) {
   }
 
   const resolvedAt = new Date().toISOString();
+  const creatorUserId = (dispute.creators as { user_id?: string } | null)
+    ?.user_id;
 
   if (resolution === "creator") {
     const { error: videoError } = await admin
@@ -95,6 +98,16 @@ export async function resolveDispute(formData: FormData) {
       status: "accepted",
       videoId: dispute.video_id,
     });
+
+    if (creatorUserId) {
+      await createNotification({
+        body: "Your dispute was resolved in your favor. The video is now accepted.",
+        link: "/creator/dashboard",
+        title: "Dispute resolved",
+        type: "dispute_resolved",
+        userId: creatorUserId,
+      });
+    }
   } else {
     const { error: updateError } = await admin
       .from("disputes")
@@ -116,6 +129,16 @@ export async function resolveDispute(formData: FormData) {
       status: "rejected",
       videoId: dispute.video_id,
     });
+
+    if (creatorUserId) {
+      await createNotification({
+        body: "Your dispute was reviewed and the rejection was upheld.",
+        link: "/creator/dashboard",
+        title: "Dispute resolved",
+        type: "dispute_resolved",
+        userId: creatorUserId,
+      });
+    }
   }
 
   revalidatePath("/admin/disputes");

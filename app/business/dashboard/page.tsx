@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { setCampaignStatus } from "./actions";
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import { getNotificationSnapshot } from "@/lib/notifications";
 import { createClient } from "@/lib/supabase/server";
 
 type Campaign = {
@@ -164,6 +166,7 @@ async function getDashboardData() {
 
   return {
     businessName: business.business_name as string,
+    notifications: await getNotificationSnapshot(user.id),
     rows,
     stats: {
       totalCampaigns: campaigns.length,
@@ -171,11 +174,13 @@ async function getDashboardData() {
       totalVideos: videos.length,
       totalViews: rows.reduce((sum, campaign) => sum + campaign.totalViews, 0),
     },
+    userId: user.id,
   };
 }
 
 export default async function BusinessDashboardPage() {
-  const { businessName, rows, stats } = await getDashboardData();
+  const { businessName, notifications, rows, stats, userId } =
+    await getDashboardData();
 
   return (
     <main className="min-h-screen bg-[#fff8ed] text-amber-950">
@@ -214,7 +219,7 @@ export default async function BusinessDashboardPage() {
               className="rounded-md px-3 py-2 text-amber-900 hover:bg-amber-100"
               href="/search"
             >
-              <span aria-hidden="true">⌕</span> Search
+              Search
             </Link>
             <div className="my-1 hidden border-t border-amber-200 md:block" />
             <span className="hidden px-3 pt-2 text-xs font-semibold uppercase tracking-wide text-amber-800/70 md:block">
@@ -245,12 +250,19 @@ export default async function BusinessDashboardPage() {
                 Campaign performance and review queue.
               </p>
             </div>
-            <Link
-              className="inline-flex rounded-md bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-700"
-              href="/business/campaigns/new"
-            >
-              Create new campaign
-            </Link>
+            <div className="flex items-center gap-3">
+              <NotificationBell
+                initialNotifications={notifications.notifications}
+                initialUnreadCount={notifications.unreadCount}
+                userId={userId}
+              />
+              <Link
+                className="inline-flex rounded-md bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-700"
+                href="/business/campaigns/new"
+              >
+                Create new campaign
+              </Link>
+            </div>
           </header>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

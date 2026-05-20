@@ -3,10 +3,26 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createNotification } from "@/lib/notifications";
 import { validateVideoSubmissionLimits } from "@/lib/submission-limits";
 import { recordVideoHistory } from "@/lib/video-history";
 
 type Platform = "youtube" | "tiktok" | "instagram";
+
+type CreatorProfile = {
+  id: string;
+  profiles: {
+    full_name: string;
+  } | null;
+};
+
+type SubmissionCampaign = {
+  businesses: {
+    user_id: string;
+  } | null;
+  id: string;
+  title: string;
+};
 
 function detectPlatform(url: string): Platform | null {
   try {
@@ -65,7 +81,7 @@ export async function submitVideo(campaignId: string, formData: FormData) {
 
   const { data: creator } = await supabase
     .from("creators")
-    .select("id")
+    .select("id, profiles!inner(full_name)")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -75,7 +91,7 @@ export async function submitVideo(campaignId: string, formData: FormData) {
 
   const { data: campaign } = await supabase
     .from("campaigns")
-    .select("id")
+    .select("id, title, businesses!inner(user_id)")
     .eq("id", campaignId)
     .eq("status", "active")
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
@@ -85,9 +101,12 @@ export async function submitVideo(campaignId: string, formData: FormData) {
     redirect("/creator/browse");
   }
 
+  const creatorProfile = creator as unknown as CreatorProfile;
+  const submissionCampaign = campaign as unknown as SubmissionCampaign;
+
   const limitResult = await validateVideoSubmissionLimits({
-    campaignId: campaign.id,
-    creatorId: creator.id,
+    campaignId: submissionCampaign.id,
+    creatorId: creatorProfile.id,
   });
 
   if (!limitResult.ok && limitResult.message) {
@@ -97,8 +116,8 @@ export async function submitVideo(campaignId: string, formData: FormData) {
   const { data: video, error } = await supabase
     .from("videos")
     .insert({
-      campaign_id: campaign.id,
-      creator_id: creator.id,
+      campaign_id: submissionCampaign.id,
+      creator_id: creatorProfile.id,
       platform,
       status: "pending",
       video_url: normalizedUrl,
@@ -116,6 +135,16 @@ export async function submitVideo(campaignId: string, formData: FormData) {
     status: "pending",
     videoId: video.id,
   });
+
+  if (submissionCampaign.businesses?.user_id) {
+    await createNotification({
+      body: `${creatorProfile.profiles?.full_name ?? "A creator"} submitted a video for ${submissionCampaign.title}`,
+      link: "/business/review",
+      title: "New video submitted",
+      type: "video_submitted",
+      userId: submissionCampaign.businesses.user_id,
+    });
+  }
 
   revalidatePath("/creator/dashboard");
   redirect("/creator/dashboard?message=Video%20submitted%20for%20review.");

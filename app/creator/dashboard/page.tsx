@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { VideosTable, type CreatorVideoRow } from "./videos-table";
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import { getNotificationSnapshot } from "@/lib/notifications";
 import { createClient } from "@/lib/supabase/server";
 
 type RawVideo = {
@@ -130,6 +132,7 @@ async function getCreatorDashboardData() {
 
   return {
     creatorHandle: creator.handle as string,
+    notifications: await getNotificationSnapshot(user.id),
     stats: {
       pendingPayout,
       totalEarned,
@@ -139,6 +142,7 @@ async function getCreatorDashboardData() {
         0,
       ),
     },
+    userId: user.id,
     videos,
   };
 }
@@ -148,7 +152,8 @@ export default async function CreatorDashboardPage({
 }: {
   searchParams?: { message?: string };
 }) {
-  const { creatorHandle, stats, videos } = await getCreatorDashboardData();
+  const { creatorHandle, notifications, stats, userId, videos } =
+    await getCreatorDashboardData();
 
   return (
     <main className="min-h-screen bg-indigo-50 text-slate-950">
@@ -193,7 +198,7 @@ export default async function CreatorDashboardPage({
               className="rounded-md px-3 py-2 text-slate-700 hover:bg-indigo-50"
               href="/search"
             >
-              <span aria-hidden="true">⌕</span> Search
+              Search
             </Link>
             <Link
               className="rounded-md px-3 py-2 text-slate-700 hover:bg-indigo-50"
@@ -220,12 +225,19 @@ export default async function CreatorDashboardPage({
                 Track submissions, views, and payouts.
               </p>
             </div>
-            <Link
-              className="inline-flex rounded-md bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
-              href="/creator/browse"
-            >
-              Browse campaigns
-            </Link>
+            <div className="flex items-center gap-3">
+              <NotificationBell
+                initialNotifications={notifications.notifications}
+                initialUnreadCount={notifications.unreadCount}
+                userId={userId}
+              />
+              <Link
+                className="inline-flex rounded-md bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                href="/creator/browse"
+              >
+                Browse campaigns
+              </Link>
+            </div>
           </header>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -255,7 +267,6 @@ export default async function CreatorDashboardPage({
     </main>
   );
 }
-
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-indigo-200 bg-white p-4">

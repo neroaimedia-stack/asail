@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createNotification } from "@/lib/notifications";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 type SubmitDisputeResult = {
@@ -120,6 +122,23 @@ export async function submitDispute(
 
   if (error) {
     return { error: error.message };
+  }
+
+  const admin = createAdminClient();
+  const { data: business } = await admin
+    .from("businesses")
+    .select("user_id")
+    .eq("id", disputeVideo.campaigns.business_id)
+    .maybeSingle();
+
+  if (business?.user_id) {
+    await createNotification({
+      body: "A creator has disputed a rejected video. Review the dispute details from the admin queue.",
+      link: "/business/review",
+      title: "Dispute opened",
+      type: "dispute_opened",
+      userId: business.user_id as string,
+    });
   }
 
   revalidatePath("/creator/dashboard");
