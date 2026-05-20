@@ -10,6 +10,7 @@ type RawVideo = {
   rejection_reason: string | null;
   status: "pending" | "accepted" | "rejected";
   submitted_at: string;
+  reviewed_at: string | null;
   view_count: number | null;
   campaigns: {
     title: string;
@@ -22,6 +23,10 @@ type RawVideo = {
     id: string;
     note: string | null;
     status: string;
+  }> | null;
+  disputes: Array<{
+    id: string;
+    status: "open" | "under_review" | "resolved_creator" | "resolved_business" | "closed";
   }> | null;
 };
 
@@ -75,7 +80,7 @@ async function getCreatorDashboardData() {
   const { data, error } = await supabase
     .from("videos")
     .select(
-      "id, status, view_count, payout_amount, payout_status, submitted_at, rejection_reason, campaigns!inner(title, businesses!inner(business_name)), video_history(id, status, note, created_at)",
+      "id, status, view_count, payout_amount, payout_status, submitted_at, reviewed_at, rejection_reason, campaigns!inner(title, businesses!inner(business_name)), video_history(id, status, note, created_at), disputes(id, status)",
     )
     .eq("creator_id", creator.id)
     .order("submitted_at", { ascending: false });
@@ -104,6 +109,13 @@ async function getCreatorDashboardData() {
         ),
       payoutStatus: video.payout_status,
       rejectionReason: video.rejection_reason,
+      reviewedAt: video.reviewed_at,
+      dispute: video.disputes?.[0]
+        ? {
+            id: video.disputes[0].id,
+            status: video.disputes[0].status,
+          }
+        : null,
       status: video.status,
       submittedAt: video.submitted_at,
       viewCount: toNumber(video.view_count),
