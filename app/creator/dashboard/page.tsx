@@ -179,6 +179,12 @@ export default async function CreatorDashboardPage({
             </Link>
             <Link
               className="rounded-md px-3 py-2 text-slate-700 hover:bg-indigo-50"
+              href="/search"
+            >
+              <span aria-hidden="true">⌕</span> Search
+            </Link>
+            <Link
+              className="rounded-md px-3 py-2 text-slate-700 hover:bg-indigo-50"
               href="/creator/settings"
             >
               Settings

@@ -140,6 +140,12 @@ export default async function BusinessReviewPage({
             </Link>
             <Link
               className="rounded-md px-3 py-2 text-amber-900 hover:bg-amber-100"
+              href="/search"
+            >
+              <span aria-hidden="true">⌕</span> Search
+            </Link>
+            <Link
+              className="rounded-md px-3 py-2 text-amber-900 hover:bg-amber-100"
               href="/business/settings"
             >
               Settings

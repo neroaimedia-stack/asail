@@ -210,6 +210,12 @@ export default async function BusinessDashboardPage() {
             >
               Leaderboard
             </Link>
+            <Link
+              className="rounded-md px-3 py-2 text-amber-900 hover:bg-amber-100"
+              href="/search"
+            >
+              <span aria-hidden="true">⌕</span> Search
+            </Link>
             <div className="my-1 hidden border-t border-amber-200 md:block" />
             <span className="hidden px-3 pt-2 text-xs font-semibold uppercase tracking-wide text-amber-800/70 md:block">
               Analytics

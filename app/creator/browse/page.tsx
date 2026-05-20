@@ -114,6 +114,24 @@ export default async function CreatorBrowsePage({
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Find active briefs that match your channels and content style.
             </p>
+            <form action="/search" className="mt-4 flex max-w-xl gap-2">
+              <input name="type" type="hidden" value="campaigns" />
+              <label className="sr-only" htmlFor="campaign-search">
+                Search campaigns
+              </label>
+              <input
+                className="h-11 flex-1 rounded-md border border-indigo-200 bg-white px-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                id="campaign-search"
+                name="q"
+                placeholder="Search campaigns..."
+              />
+              <button
+                className="rounded-md border border-indigo-200 bg-white px-4 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50"
+                type="submit"
+              >
+                Search
+              </button>
+            </form>
           </div>
 
           <form className="flex flex-col gap-3 sm:flex-row" method="get">
