@@ -13,6 +13,7 @@ drop schema if exists private cascade;
 drop table if exists public.payouts cascade;
 drop table if exists public.messages cascade;
 drop table if exists public.conversations cascade;
+drop table if exists public.email_preferences cascade;
 drop table if exists public.invitations cascade;
 drop table if exists public.video_history cascade;
 drop table if exists public.videos cascade;
@@ -30,6 +31,7 @@ create table public.profiles (
   role text not null check (role in ('business', 'creator', 'admin')),
   full_name text not null,
   avatar_url text,
+  last_seen timestamp with time zone,
   created_at timestamp with time zone not null default now()
 );
 
@@ -51,6 +53,14 @@ create table public.terms_accepted (
   ip_address text,
   terms_version text not null default '1.0',
   constraint terms_accepted_user_id_unique unique (user_id)
+);
+
+create table public.email_preferences (
+  user_id uuid primary key references public.profiles(id) on delete cascade,
+  video_updates boolean not null default true,
+  invitations boolean not null default true,
+  campaign_alerts boolean not null default true,
+  messages boolean not null default true
 );
 
 create table public.creators (
@@ -270,6 +280,7 @@ create index payouts_video_id_idx on public.payouts(video_id);
 alter table public.profiles enable row level security;
 alter table public.businesses enable row level security;
 alter table public.terms_accepted enable row level security;
+alter table public.email_preferences enable row level security;
 alter table public.creators enable row level security;
 alter table public.campaigns enable row level security;
 alter table public.content_guidelines enable row level security;
@@ -567,6 +578,25 @@ create policy "Authenticated users can insert terms acceptance."
   on public.terms_accepted
   for insert
   to authenticated
+  with check (user_id = (select auth.uid()));
+
+create policy "Users can read own email preferences."
+  on public.email_preferences
+  for select
+  to authenticated
+  using (user_id = (select auth.uid()));
+
+create policy "Users can create own email preferences."
+  on public.email_preferences
+  for insert
+  to authenticated
+  with check (user_id = (select auth.uid()));
+
+create policy "Users can update own email preferences."
+  on public.email_preferences
+  for update
+  to authenticated
+  using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
 
 create policy "Creators can read businesses with active campaigns."

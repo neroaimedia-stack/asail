@@ -2,11 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { sendPreferredEmail } from "@/lib/email";
+import { invitationReceivedEmail } from "@/lib/email-templates";
 import { createNotification } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export type InviteCampaignOption = {
+  cpmRate: number | string;
   disabledReason: string | null;
   id: string;
   title: string;
@@ -58,7 +61,7 @@ export async function getInviteCampaignOptions(
 
   const { data: campaigns, error: campaignsError } = await admin
     .from("campaigns")
-    .select("id, title")
+    .select("id, title, cpm_rate")
     .eq("business_id", businessId)
     .eq("status", "active")
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
@@ -113,6 +116,7 @@ export async function getInviteCampaignOptions(
         ? "Invitation already pending"
         : null,
     id: campaign.id,
+    cpmRate: campaign.cpm_rate,
     title: campaign.title,
   }));
 }
@@ -152,7 +156,7 @@ export async function sendInvitation(
 
   const { data: creator, error: creatorError } = await admin
     .from("creators")
-    .select("id, user_id, handle")
+    .select("id, user_id, handle, profiles!inner(full_name)")
     .eq("id", creatorId)
     .maybeSingle();
 
@@ -185,6 +189,21 @@ export async function sendInvitation(
     link: "/creator/invitations",
     title: "You've been invited to a campaign",
     type: "invitation_received",
+    userId: creator.user_id as string,
+  });
+  const creatorProfile = creator.profiles as { full_name?: string } | null;
+  const template = invitationReceivedEmail({
+    businessName,
+    campaignTitle: selectedOption.title,
+    cpmRate: selectedOption.cpmRate,
+    creatorName: creatorProfile?.full_name ?? "Creator",
+    personalMessage: message || null,
+  });
+
+  await sendPreferredEmail({
+    html: template.html,
+    preference: "invitations",
+    subject: template.subject,
     userId: creator.user_id as string,
   });
 

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sendPreferredEmail } from "@/lib/email";
+import { campaignExpiringEmail } from "@/lib/email-templates";
 import { createNotificationOnce } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -57,7 +59,7 @@ export async function POST(request: NextRequest) {
 
   const { data: expiringCampaigns, error: expiringError } = await supabase
     .from("campaigns")
-    .select("id, title, expires_at, businesses!inner(user_id)")
+    .select("id, title, expires_at, businesses!inner(user_id, business_name)")
     .gte("expires_at", now)
     .lte("expires_at", threeDaysFromNow.toISOString())
     .eq("status", "active")
@@ -75,13 +77,36 @@ export async function POST(request: NextRequest) {
       continue;
     }
 
-    await createNotificationOnce({
+    const notificationCreated = await createNotificationOnce({
       body: `${campaign.title} expires in 3 days. Review any pending videos before it ends.`,
       link: "/business/dashboard",
       title: "Campaign expiring soon",
       type: "campaign_expiring",
       userId: businessUserId,
     });
+
+    if (notificationCreated) {
+      const { count } = await supabase
+        .from("videos")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaign.id)
+        .eq("status", "pending");
+      const business = campaign.businesses as
+        | { business_name?: string; user_id?: string }
+        | null;
+      const template = campaignExpiringEmail({
+        businessName: business?.business_name ?? "Business",
+        campaignTitle: campaign.title,
+        pendingCount: count ?? 0,
+      });
+
+      await sendPreferredEmail({
+        html: template.html,
+        preference: "campaign_alerts",
+        subject: template.subject,
+        userId: businessUserId,
+      });
+    }
   }
 
   const { data: expiredCampaigns, error: expiredSelectError } = await supabase

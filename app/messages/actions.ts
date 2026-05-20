@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { sendPreferredEmail } from "@/lib/email";
+import { newMessageEmail } from "@/lib/email-templates";
 import { createNotification } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -293,13 +295,39 @@ export async function sendMessage(formData: FormData) {
       : creator?.profiles?.full_name ?? creator?.handle ?? "Creator";
 
   if (recipientUserId) {
+    const { data: recipientProfile } = await admin
+      .from("profiles")
+      .select("full_name, last_seen")
+      .eq("id", recipientUserId)
+      .maybeSingle();
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    const lastSeen = recipientProfile?.last_seen
+      ? new Date(recipientProfile.last_seen as string).getTime()
+      : 0;
+    const preview = content.length > 60 ? `${content.slice(0, 57)}...` : content;
+
     await createNotification({
-      body: content.length > 60 ? `${content.slice(0, 57)}...` : content,
+      body: preview,
       link: `/messages?conversation=${conversationId}`,
       title: `New message from ${senderName}`,
       type: "new_message",
       userId: recipientUserId,
     });
+
+    if (lastSeen < fiveMinutesAgo) {
+      const template = newMessageEmail({
+        messagePreview: preview,
+        recipientName: (recipientProfile?.full_name as string | null) ?? "there",
+        senderName,
+      });
+
+      await sendPreferredEmail({
+        html: template.html,
+        preference: "messages",
+        subject: template.subject,
+        userId: recipientUserId,
+      });
+    }
   }
 
   revalidatePath("/messages");
@@ -327,6 +355,10 @@ export async function markConversationRead(conversationId: string) {
   }
 
   const admin = createAdminClient();
+  await admin
+    .from("profiles")
+    .update({ last_seen: new Date().toISOString() })
+    .eq("id", userId);
   await admin
     .from("messages")
     .update({ read: true })

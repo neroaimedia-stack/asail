@@ -77,10 +77,11 @@ export async function createNotificationOnce({
   }
 
   if (existing) {
-    return;
+    return false;
   }
 
   await createNotification({ body, link, title, type, userId });
+  return true;
 }
 
 export async function getNotificationSnapshot(userId: string) {
