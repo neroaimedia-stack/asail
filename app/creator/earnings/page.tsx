@@ -84,6 +84,13 @@ async function getCreatorEarningsData() {
     redirect("/creator/onboarding");
   }
 
+  const { count: pendingInvitationsCount } = await supabase
+    .from("invitations")
+    .select("id", { count: "exact", head: true })
+    .eq("creator_id", creator.id)
+    .eq("status", "pending")
+    .gt("expires_at", new Date().toISOString());
+
   const { data, error } = await supabase
     .from("earnings_summary")
     .select(
@@ -110,6 +117,7 @@ async function getCreatorEarningsData() {
 
   return {
     creatorHandle: creator.handle as string,
+    pendingInvitationsCount: pendingInvitationsCount ?? 0,
     rows,
     stats: {
       paidOut,
@@ -121,7 +129,8 @@ async function getCreatorEarningsData() {
 }
 
 export default async function CreatorEarningsPage() {
-  const { creatorHandle, rows, stats } = await getCreatorEarningsData();
+  const { creatorHandle, pendingInvitationsCount, rows, stats } =
+    await getCreatorEarningsData();
 
   return (
     <main className="min-h-screen bg-indigo-50 text-slate-950">
@@ -149,6 +158,19 @@ export default async function CreatorEarningsPage() {
               href="/creator/dashboard"
             >
               My Videos
+            </Link>
+            <Link
+              className="rounded-md px-3 py-2 text-slate-700 hover:bg-indigo-50"
+              href="/creator/invitations"
+            >
+              <span className="flex items-center justify-between gap-2">
+                Invitations
+                {pendingInvitationsCount > 0 ? (
+                  <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-xs font-semibold text-white">
+                    {pendingInvitationsCount}
+                  </span>
+                ) : null}
+              </span>
             </Link>
             <Link
               className="rounded-md bg-indigo-100 px-3 py-2 font-semibold text-indigo-900"

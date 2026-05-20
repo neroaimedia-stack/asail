@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import {
   SearchClient,
-  type ActiveCampaign,
   type SearchTab,
 } from "./search-client";
 import { createClient } from "@/lib/supabase/server";
@@ -36,34 +35,7 @@ async function getSearchPageData(searchParams?: SearchParams) {
         ? "creators"
         : "campaigns";
 
-  let activeCampaigns: ActiveCampaign[] = [];
-
-  if (profile?.role === "business") {
-    const { data: business } = await supabase
-      .from("businesses")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (business) {
-      const { data, error } = await supabase
-        .from("campaigns")
-        .select("id, title")
-        .eq("business_id", business.id)
-        .eq("status", "active")
-        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      activeCampaigns = (data ?? []) as ActiveCampaign[];
-    }
-  }
-
   return {
-    activeCampaigns,
     defaultQuery: searchParams?.q ?? "",
     defaultTab,
     isBusiness: profile?.role === "business",
@@ -75,12 +47,12 @@ export default async function SearchPage({
 }: {
   searchParams?: SearchParams;
 }) {
-  const { activeCampaigns, defaultQuery, defaultTab, isBusiness } =
-    await getSearchPageData(searchParams);
+  const { defaultQuery, defaultTab, isBusiness } = await getSearchPageData(
+    searchParams,
+  );
 
   return (
     <SearchClient
-      activeCampaigns={activeCampaigns}
       defaultQuery={defaultQuery}
       defaultTab={defaultTab}
       isBusiness={isBusiness}

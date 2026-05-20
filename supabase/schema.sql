@@ -11,6 +11,7 @@ drop function if exists public.handle_new_user();
 drop schema if exists private cascade;
 
 drop table if exists public.payouts cascade;
+drop table if exists public.invitations cascade;
 drop table if exists public.video_history cascade;
 drop table if exists public.videos cascade;
 drop table if exists public.content_guidelines cascade;
@@ -188,6 +189,20 @@ create table public.notifications (
   created_at timestamp with time zone not null default now()
 );
 
+create table public.invitations (
+  id uuid primary key default gen_random_uuid(),
+  campaign_id uuid not null references public.campaigns(id) on delete cascade,
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  creator_id uuid not null references public.creators(id) on delete cascade,
+  message text,
+  status text not null default 'pending' check (
+    status in ('pending', 'accepted', 'declined', 'expired')
+  ),
+  created_at timestamp with time zone not null default now(),
+  responded_at timestamp with time zone,
+  expires_at timestamp with time zone not null default now() + interval '7 days'
+);
+
 create table public.payouts (
   id uuid primary key default gen_random_uuid(),
   creator_id uuid not null references public.creators(id) on delete cascade,
@@ -217,6 +232,9 @@ create index disputes_creator_id_idx on public.disputes(creator_id);
 create index disputes_business_id_idx on public.disputes(business_id);
 create index disputes_status_idx on public.disputes(status);
 create index notifications_user_id_idx on public.notifications(user_id, created_at desc);
+create unique index invitations_unique on public.invitations(campaign_id, creator_id) where status = 'pending';
+create index invitations_campaign_id_idx on public.invitations(campaign_id);
+create index invitations_creator_id_status_idx on public.invitations(creator_id, status);
 create index payouts_creator_id_idx on public.payouts(creator_id);
 create index payouts_video_id_idx on public.payouts(video_id);
 
@@ -230,6 +248,7 @@ alter table public.videos enable row level security;
 alter table public.video_history enable row level security;
 alter table public.disputes enable row level security;
 alter table public.notifications enable row level security;
+alter table public.invitations enable row level security;
 alter table public.payouts enable row level security;
 
 create schema private;
@@ -696,6 +715,31 @@ create policy "Users can update own notifications."
   to authenticated
   using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
+
+create policy "Businesses can create own invitations."
+  on public.invitations
+  for insert
+  to authenticated
+  with check (private.is_business_owner(business_id));
+
+create policy "Businesses can read own invitations."
+  on public.invitations
+  for select
+  to authenticated
+  using (private.is_business_owner(business_id));
+
+create policy "Creators can read sent invitations."
+  on public.invitations
+  for select
+  to authenticated
+  using (private.is_creator_owner(creator_id));
+
+create policy "Creators can respond to invitations."
+  on public.invitations
+  for update
+  to authenticated
+  using (private.is_creator_owner(creator_id))
+  with check (private.is_creator_owner(creator_id));
 
 create policy "Creators can read own payouts."
   on public.payouts

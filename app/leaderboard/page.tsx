@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import {
   LeaderboardClient,
-  type ActiveCampaign,
   type LeaderboardRow,
 } from "./leaderboard-client";
 import { createClient } from "@/lib/supabase/server";
@@ -49,32 +48,6 @@ async function getLeaderboardData() {
     throw new Error(leaderboardError.message);
   }
 
-  let activeCampaigns: ActiveCampaign[] = [];
-
-  if (profile?.role === "business") {
-    const { data: business } = await supabase
-      .from("businesses")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (business) {
-      const { data: campaignsData, error: campaignsError } = await supabase
-        .from("campaigns")
-        .select("id, title")
-        .eq("business_id", business.id)
-        .eq("status", "active")
-        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-        .order("created_at", { ascending: false });
-
-      if (campaignsError) {
-        throw new Error(campaignsError.message);
-      }
-
-      activeCampaigns = (campaignsData ?? []) as ActiveCampaign[];
-    }
-  }
-
   const rows: LeaderboardRow[] = (
     (leaderboardData ?? []) as RawLeaderboardRow[]
   ).map((row) => ({
@@ -92,18 +65,16 @@ async function getLeaderboardData() {
   }));
 
   return {
-    activeCampaigns,
     isBusiness: profile?.role === "business",
     rows,
   };
 }
 
 export default async function LeaderboardPage() {
-  const { activeCampaigns, isBusiness, rows } = await getLeaderboardData();
+  const { isBusiness, rows } = await getLeaderboardData();
 
   return (
     <LeaderboardClient
-      activeCampaigns={activeCampaigns}
       isBusiness={isBusiness}
       rows={rows}
     />

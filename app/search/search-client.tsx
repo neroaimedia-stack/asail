@@ -5,13 +5,12 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  InviteCreatorModal,
+  type InviteCreator,
+} from "@/components/invitations/invite-creator-modal";
 
 export type SearchTab = "campaigns" | "creators";
-
-export type ActiveCampaign = {
-  id: string;
-  title: string;
-};
 
 type CampaignResult = {
   business_category: string;
@@ -37,7 +36,6 @@ type CreatorResult = {
 };
 
 type SearchClientProps = {
-  activeCampaigns: ActiveCampaign[];
   defaultQuery: string;
   defaultTab: SearchTab;
   isBusiness: boolean;
@@ -91,7 +89,6 @@ function handleWithAt(handle: string) {
 }
 
 export function SearchClient({
-  activeCampaigns,
   defaultQuery,
   defaultTab,
   isBusiness,
@@ -102,12 +99,7 @@ export function SearchClient({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState(defaultQuery);
-  const [selectedCampaignId, setSelectedCampaignId] = useState(
-    activeCampaigns[0]?.id ?? "",
-  );
-  const [selectedCreator, setSelectedCreator] = useState<CreatorResult | null>(
-    null,
-  );
+  const [selectedCreator, setSelectedCreator] = useState<InviteCreator | null>(null);
   const [tab, setTab] = useState<SearchTab>(defaultTab);
   const [toast, setToast] = useState("");
 
@@ -180,14 +172,11 @@ export function SearchClient({
   }, [trimmedQuery]);
 
   function openInviteModal(creator: CreatorResult) {
-    setSelectedCreator(creator);
-    setSelectedCampaignId(activeCampaigns[0]?.id ?? "");
-  }
-
-  function showInviteToast() {
-    setSelectedCreator(null);
-    setToast("Invitation feature coming soon");
-    window.setTimeout(() => setToast(""), 2800);
+    setSelectedCreator({
+      creatorId: creator.creator_id,
+      fullName: creator.full_name,
+      handle: creator.handle,
+    });
   }
 
   return (
@@ -244,71 +233,14 @@ export function SearchClient({
         </section>
       </section>
 
-      {selectedCreator ? (
-        <div
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 px-4"
-          role="dialog"
-        >
-          <div className="w-full max-w-md rounded-lg border border-stone-200 bg-white p-5 shadow-lg">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold">Invite creator</h2>
-                <p className="mt-1 text-sm text-stone-600">
-                  {selectedCreator.full_name} {handleWithAt(selectedCreator.handle)}
-                </p>
-              </div>
-              <button
-                className="rounded-md px-2 py-1 text-stone-500 hover:bg-stone-100"
-                onClick={() => setSelectedCreator(null)}
-                type="button"
-              >
-                Close
-              </button>
-            </div>
-
-            <label className="mt-5 block">
-              <span className="mb-2 block text-sm font-semibold text-stone-700">
-                Active campaign
-              </span>
-              <select
-                className="h-11 w-full rounded-md border border-stone-300 bg-white px-3 text-sm outline-none transition focus:border-stone-500 focus:ring-2 focus:ring-stone-200"
-                disabled={!activeCampaigns.length}
-                onChange={(event) => setSelectedCampaignId(event.target.value)}
-                value={selectedCampaignId}
-              >
-                {activeCampaigns.length ? (
-                  activeCampaigns.map((campaign) => (
-                    <option key={campaign.id} value={campaign.id}>
-                      {campaign.title}
-                    </option>
-                  ))
-                ) : (
-                  <option>No active campaigns</option>
-                )}
-              </select>
-            </label>
-
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                className="rounded-md border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100"
-                onClick={() => setSelectedCreator(null)}
-                type="button"
-              >
-                Cancel
-              </button>
-              <button
-                className="rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-300"
-                disabled={!activeCampaigns.length}
-                onClick={showInviteToast}
-                type="button"
-              >
-                Send invite
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <InviteCreatorModal
+        creator={selectedCreator}
+        onClose={() => setSelectedCreator(null)}
+        onSuccess={(message) => {
+          setToast(message);
+          window.setTimeout(() => setToast(""), 2800);
+        }}
+      />
 
       {toast ? (
         <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-md border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-900 shadow-lg">
