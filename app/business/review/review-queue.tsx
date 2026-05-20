@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { startConversationFromReview } from "@/app/messages/actions";
 import { acceptVideo, rejectVideo } from "./actions";
 
 export type ReviewVideo = {
@@ -104,9 +105,20 @@ export function ReviewQueue({
 
       <aside className="rounded-lg border border-amber-200 bg-white p-5">
         <div className="border-b border-amber-200 pb-4">
-          <h2 className="text-xl font-semibold text-amber-950">
-            {current.creatorName}
-          </h2>
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="text-xl font-semibold text-amber-950">
+              {current.creatorName}
+            </h2>
+            <form action={startConversationFromReview}>
+              <input name="videoId" type="hidden" value={current.id} />
+              <button
+                className="rounded-md border border-amber-200 px-3 py-2 text-xs font-semibold text-amber-900 transition hover:bg-amber-50"
+                type="submit"
+              >
+                Message
+              </button>
+            </form>
+          </div>
           <p className="mt-1 text-sm text-amber-900/70">
             {current.creatorHandle} · {current.platform}
           </p>

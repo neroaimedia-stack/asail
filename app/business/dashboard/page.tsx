@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { setCampaignStatus } from "./actions";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { formatUnreadCount, getUnreadMessageCount } from "@/lib/messages";
 import { getNotificationSnapshot } from "@/lib/notifications";
 import { createClient } from "@/lib/supabase/server";
 
@@ -166,6 +167,7 @@ async function getDashboardData() {
 
   return {
     businessName: business.business_name as string,
+    messageUnreadCount: await getUnreadMessageCount(user.id),
     notifications: await getNotificationSnapshot(user.id),
     rows,
     stats: {
@@ -179,7 +181,7 @@ async function getDashboardData() {
 }
 
 export default async function BusinessDashboardPage() {
-  const { businessName, notifications, rows, stats, userId } =
+  const { businessName, messageUnreadCount, notifications, rows, stats, userId } =
     await getDashboardData();
 
   return (
@@ -220,6 +222,19 @@ export default async function BusinessDashboardPage() {
               href="/search"
             >
               Search
+            </Link>
+            <Link
+              className="rounded-md px-3 py-2 text-amber-900 hover:bg-amber-100"
+              href="/messages"
+            >
+              <span className="flex items-center justify-between gap-2">
+                Messages
+                {messageUnreadCount > 0 ? (
+                  <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+                    {formatUnreadCount(messageUnreadCount)}
+                  </span>
+                ) : null}
+              </span>
             </Link>
             <div className="my-1 hidden border-t border-amber-200 md:block" />
             <span className="hidden px-3 pt-2 text-xs font-semibold uppercase tracking-wide text-amber-800/70 md:block">

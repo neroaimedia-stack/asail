@@ -11,6 +11,8 @@ drop function if exists public.handle_new_user();
 drop schema if exists private cascade;
 
 drop table if exists public.payouts cascade;
+drop table if exists public.messages cascade;
+drop table if exists public.conversations cascade;
 drop table if exists public.invitations cascade;
 drop table if exists public.video_history cascade;
 drop table if exists public.videos cascade;
@@ -203,6 +205,24 @@ create table public.invitations (
   expires_at timestamp with time zone not null default now() + interval '7 days'
 );
 
+create table public.conversations (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  creator_id uuid not null references public.creators(id) on delete cascade,
+  campaign_id uuid references public.campaigns(id) on delete set null,
+  last_message_at timestamp with time zone not null default now(),
+  created_at timestamp with time zone not null default now()
+);
+
+create table public.messages (
+  id uuid primary key default gen_random_uuid(),
+  conversation_id uuid not null references public.conversations(id) on delete cascade,
+  sender_id uuid not null references public.profiles(id) on delete cascade,
+  content text not null,
+  read boolean not null default false,
+  created_at timestamp with time zone not null default now()
+);
+
 create table public.payouts (
   id uuid primary key default gen_random_uuid(),
   creator_id uuid not null references public.creators(id) on delete cascade,
@@ -235,6 +255,15 @@ create index notifications_user_id_idx on public.notifications(user_id, created_
 create unique index invitations_unique on public.invitations(campaign_id, creator_id) where status = 'pending';
 create index invitations_campaign_id_idx on public.invitations(campaign_id);
 create index invitations_creator_id_status_idx on public.invitations(creator_id, status);
+create unique index conversations_unique
+  on public.conversations(
+    business_id,
+    creator_id,
+    coalesce(campaign_id, '00000000-0000-0000-0000-000000000000'::uuid)
+  );
+create index conversations_business_id_idx on public.conversations(business_id, last_message_at desc);
+create index conversations_creator_id_idx on public.conversations(creator_id, last_message_at desc);
+create index messages_conversation_idx on public.messages(conversation_id, created_at asc);
 create index payouts_creator_id_idx on public.payouts(creator_id);
 create index payouts_video_id_idx on public.payouts(video_id);
 
@@ -249,6 +278,8 @@ alter table public.video_history enable row level security;
 alter table public.disputes enable row level security;
 alter table public.notifications enable row level security;
 alter table public.invitations enable row level security;
+alter table public.conversations enable row level security;
+alter table public.messages enable row level security;
 alter table public.payouts enable row level security;
 
 create schema private;
@@ -313,6 +344,26 @@ as $$
     from public.profiles
     where profiles.id = auth.uid()
       and profiles.role = 'admin'
+  );
+$$;
+
+create or replace function private.is_conversation_participant(
+  target_conversation_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.conversations
+    where conversations.id = target_conversation_id
+      and (
+        private.is_business_owner(conversations.business_id)
+        or private.is_creator_owner(conversations.creator_id)
+      )
   );
 $$;
 
@@ -740,6 +791,30 @@ create policy "Creators can respond to invitations."
   to authenticated
   using (private.is_creator_owner(creator_id))
   with check (private.is_creator_owner(creator_id));
+
+create policy "Users can read conversations they participate in."
+  on public.conversations
+  for select
+  to authenticated
+  using (
+    private.is_business_owner(business_id)
+    or private.is_creator_owner(creator_id)
+  );
+
+create policy "Users can read messages in own conversations."
+  on public.messages
+  for select
+  to authenticated
+  using (private.is_conversation_participant(conversation_id));
+
+create policy "Users can insert messages in own conversations."
+  on public.messages
+  for insert
+  to authenticated
+  with check (
+    sender_id = (select auth.uid())
+    and private.is_conversation_participant(conversation_id)
+  );
 
 create policy "Creators can read own payouts."
   on public.payouts

@@ -6,6 +6,7 @@ import {
   InviteCreatorModal,
   type InviteCreator,
 } from "@/components/invitations/invite-creator-modal";
+import { startBusinessConversation } from "@/app/messages/actions";
 
 export type LeaderboardRow = {
   avgViewsPerVideo: number | string;
@@ -271,13 +272,28 @@ export function LeaderboardClient({
                     <Td>{formatNumber(creator.avgViewsPerVideo)}</Td>
                     {isBusiness ? (
                       <Td>
-                        <button
-                          className="rounded-md border border-stone-300 px-3 py-2 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
-                          onClick={() => openInviteModal(creator)}
-                          type="button"
-                        >
-                          Invite to campaign
-                        </button>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            className="rounded-md border border-stone-300 px-3 py-2 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
+                            onClick={() => openInviteModal(creator)}
+                            type="button"
+                          >
+                            Invite
+                          </button>
+                          <form action={startBusinessConversation}>
+                            <input
+                              name="creatorId"
+                              type="hidden"
+                              value={creator.creatorId}
+                            />
+                            <button
+                              className="rounded-md bg-stone-950 px-3 py-2 text-xs font-semibold text-white transition hover:bg-stone-800"
+                              type="submit"
+                            >
+                              Message
+                            </button>
+                          </form>
+                        </div>
                       </Td>
                     ) : null}
                   </tr>

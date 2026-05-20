@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { VideosTable, type CreatorVideoRow } from "./videos-table";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { formatUnreadCount, getUnreadMessageCount } from "@/lib/messages";
 import { getNotificationSnapshot } from "@/lib/notifications";
 import { createClient } from "@/lib/supabase/server";
 
@@ -139,6 +140,7 @@ async function getCreatorDashboardData() {
 
   return {
     creatorHandle: creator.handle as string,
+    messageUnreadCount: await getUnreadMessageCount(user.id),
     notifications: await getNotificationSnapshot(user.id),
     pendingInvitationsCount: pendingInvitationsCount ?? 0,
     stats: {
@@ -162,6 +164,7 @@ export default async function CreatorDashboardPage({
 }) {
   const {
     creatorHandle,
+    messageUnreadCount,
     notifications,
     pendingInvitationsCount,
     stats,
@@ -227,6 +230,19 @@ export default async function CreatorDashboardPage({
               href="/search"
             >
               Search
+            </Link>
+            <Link
+              className="rounded-md px-3 py-2 text-slate-700 hover:bg-indigo-50"
+              href="/messages"
+            >
+              <span className="flex items-center justify-between gap-2">
+                Messages
+                {messageUnreadCount > 0 ? (
+                  <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+                    {formatUnreadCount(messageUnreadCount)}
+                  </span>
+                ) : null}
+              </span>
             </Link>
             <Link
               className="rounded-md px-3 py-2 text-slate-700 hover:bg-indigo-50"

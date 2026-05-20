@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { formatUnreadCount, getUnreadMessageCount } from "@/lib/messages";
 import { createClient } from "@/lib/supabase/server";
 
 type EarningsRow = {
@@ -117,6 +118,7 @@ async function getCreatorEarningsData() {
 
   return {
     creatorHandle: creator.handle as string,
+    messageUnreadCount: await getUnreadMessageCount(user.id),
     pendingInvitationsCount: pendingInvitationsCount ?? 0,
     rows,
     stats: {
@@ -129,7 +131,7 @@ async function getCreatorEarningsData() {
 }
 
 export default async function CreatorEarningsPage() {
-  const { creatorHandle, pendingInvitationsCount, rows, stats } =
+  const { creatorHandle, messageUnreadCount, pendingInvitationsCount, rows, stats } =
     await getCreatorEarningsData();
 
   return (
@@ -189,6 +191,19 @@ export default async function CreatorEarningsPage() {
               href="/search"
             >
               Search
+            </Link>
+            <Link
+              className="rounded-md px-3 py-2 text-slate-700 hover:bg-indigo-50"
+              href="/messages"
+            >
+              <span className="flex items-center justify-between gap-2">
+                Messages
+                {messageUnreadCount > 0 ? (
+                  <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+                    {formatUnreadCount(messageUnreadCount)}
+                  </span>
+                ) : null}
+              </span>
             </Link>
             <Link
               className="rounded-md px-3 py-2 text-slate-700 hover:bg-indigo-50"

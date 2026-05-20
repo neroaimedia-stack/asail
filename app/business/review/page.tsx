@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ReviewQueue, type ReviewVideo } from "./review-queue";
+import { formatUnreadCount, getUnreadMessageCount } from "@/lib/messages";
 import { createClient } from "@/lib/supabase/server";
 
 type RawVideo = {
@@ -94,6 +95,7 @@ async function getPendingVideos() {
 
   return {
     businessName: business.business_name as string,
+    messageUnreadCount: await getUnreadMessageCount(user.id),
     videos,
   };
 }
@@ -103,7 +105,7 @@ export default async function BusinessReviewPage({
 }: {
   searchParams?: { error?: string };
 }) {
-  const { businessName, videos } = await getPendingVideos();
+  const { businessName, messageUnreadCount, videos } = await getPendingVideos();
 
   return (
     <main className="min-h-screen bg-[#fff8ed] text-amber-950">
@@ -143,6 +145,19 @@ export default async function BusinessReviewPage({
               href="/search"
             >
               Search
+            </Link>
+            <Link
+              className="rounded-md px-3 py-2 text-amber-900 hover:bg-amber-100"
+              href="/messages"
+            >
+              <span className="flex items-center justify-between gap-2">
+                Messages
+                {messageUnreadCount > 0 ? (
+                  <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+                    {formatUnreadCount(messageUnreadCount)}
+                  </span>
+                ) : null}
+              </span>
             </Link>
             <Link
               className="rounded-md px-3 py-2 text-amber-900 hover:bg-amber-100"
