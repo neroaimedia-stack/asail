@@ -173,6 +173,12 @@ export default async function CreatorDashboardPage({
             </Link>
             <Link
               className="rounded-md px-3 py-2 text-slate-700 hover:bg-indigo-50"
+              href="/leaderboard"
+            >
+              Leaderboard
+            </Link>
+            <Link
+              className="rounded-md px-3 py-2 text-slate-700 hover:bg-indigo-50"
               href="/creator/settings"
             >
               Settings

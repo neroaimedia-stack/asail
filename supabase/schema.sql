@@ -55,6 +55,7 @@ create table public.creators (
   handle text not null,
   platform text not null check (platform in ('tiktok', 'instagram', 'youtube')),
   categories text[] not null default '{}',
+  verified boolean not null default false,
   bio text,
   created_at timestamp with time zone not null default now(),
   constraint creators_user_id_unique unique (user_id)
@@ -617,8 +618,32 @@ left join public.videos v
   and v.status = 'accepted'
 group by c.id, c.business_id, c.title, c.total_budget, c.spent_budget, c.cpm_rate;
 
+create or replace view public.creator_leaderboard as
+select
+  cr.id as creator_id,
+  cr.user_id,
+  p.full_name,
+  cr.handle,
+  cr.platform,
+  cr.categories,
+  cr.verified,
+  coalesce(sum(v.view_count), 0) as total_views,
+  coalesce(sum(v.payout_amount), 0) as total_earned,
+  count(v.id) as total_videos_accepted,
+  coalesce(avg(v.view_count), 0) as avg_views_per_video
+from public.creators cr
+join public.profiles p on cr.user_id = p.id
+left join public.videos v
+  on v.creator_id = cr.id
+  and v.status = 'accepted'
+group by cr.id, cr.user_id, p.full_name, cr.handle, cr.platform, cr.categories, cr.verified
+order by total_views desc;
+
 grant select on public.earnings_summary to authenticated;
 grant select on public.business_spend_summary to authenticated;
+revoke all on public.creator_leaderboard from anon;
+revoke all on public.creator_leaderboard from public;
+grant select on public.creator_leaderboard to authenticated;
 
 create or replace function public.handle_new_user()
 returns trigger
