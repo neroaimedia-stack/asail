@@ -8,10 +8,10 @@ export function TermsConsent({ submitLabel }: { submitLabel: string }) {
 
   return (
     <div className="space-y-4">
-      <label className="flex gap-3 rounded-md border border-ink/15 bg-mist/60 px-3 py-3 text-sm leading-6 text-ink/75">
+      <label className="card-inset flex gap-3 text-sm leading-6">
         <input
           checked={accepted}
-          className="mt-1 h-4 w-4 shrink-0 accent-sea"
+          className="mt-1 h-4 w-4 shrink-0 accent-[var(--asail-blue)]"
           name="termsAccepted"
           onChange={(event) => setAccepted(event.target.checked)}
           required
@@ -20,18 +20,18 @@ export function TermsConsent({ submitLabel }: { submitLabel: string }) {
         />
         <span>
           I agree to the{" "}
-          <Link className="font-semibold text-sea" href="/terms">
+          <Link className="font-semibold text-[var(--asail-blue-bright)]" href="/terms" target="_blank">
             Terms of Service
           </Link>{" "}
           and{" "}
-          <Link className="font-semibold text-sea" href="/privacy">
+          <Link className="font-semibold text-[var(--asail-blue-bright)]" href="/privacy" target="_blank">
             Privacy Policy
           </Link>
         </span>
       </label>
 
       <button
-        className="w-full rounded-md bg-sea px-4 py-3 text-sm font-semibold text-white transition hover:bg-sea/90 disabled:cursor-not-allowed disabled:bg-ink/25"
+        className="btn-primary w-full"
         disabled={!accepted}
         type="submit"
       >

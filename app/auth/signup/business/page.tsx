@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { signupBusiness } from "@/app/auth/actions";
 import { TermsConsent } from "@/app/auth/signup/terms-consent";
+import { AsailLogo } from "@/components/AsailLogo";
 
 const categories = ["Restaurant", "Hotel", "SaaS", "Retail", "Other"];
 
@@ -10,26 +11,25 @@ export default function BusinessSignupPage({
   searchParams?: { error?: string };
 }) {
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-10">
-      <section className="w-full max-w-xl rounded-lg border border-ink/10 bg-white p-6 shadow-sm">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sea">
-            Business signup
+    <main className="flex min-h-screen items-center justify-center px-4 py-10">
+      <section className="card w-full max-w-[400px] p-7">
+        <AsailLogo centered />
+        <div className="mt-6 text-center">
+          <h1 className="text-lg font-semibold">Create a business account</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--asail-text-muted)" }}>
+            Launch campaigns and pay for real views.
           </p>
-          <h1 className="mt-3 text-3xl font-semibold text-ink">
-            Create a business account
-          </h1>
         </div>
         {searchParams?.error ? (
-          <p className="mt-5 rounded-md border border-coral/30 bg-coral/10 px-3 py-2 text-sm text-ink">
+          <p className="pill pill-danger mt-5 w-full justify-center">
             {searchParams.error}
           </p>
         ) : null}
-        <form action={signupBusiness} className="mt-8 space-y-5">
+        <form action={signupBusiness} className="mt-6 space-y-4">
           <label className="block">
-            <span className="text-sm font-medium text-ink/75">Full name</span>
+            <span className="label-muted">Full name</span>
             <input
-              className="mt-2 w-full rounded-md border border-ink/15 px-3 py-3 text-ink outline-none transition focus:border-sea"
+              className="input-base mt-2"
               name="fullName"
               type="text"
               autoComplete="name"
@@ -37,9 +37,9 @@ export default function BusinessSignupPage({
             />
           </label>
           <label className="block">
-            <span className="text-sm font-medium text-ink/75">Email</span>
+            <span className="label-muted">Email</span>
             <input
-              className="mt-2 w-full rounded-md border border-ink/15 px-3 py-3 text-ink outline-none transition focus:border-sea"
+              className="input-base mt-2"
               name="email"
               type="email"
               autoComplete="email"
@@ -47,9 +47,9 @@ export default function BusinessSignupPage({
             />
           </label>
           <label className="block">
-            <span className="text-sm font-medium text-ink/75">Password</span>
+            <span className="label-muted">Password</span>
             <input
-              className="mt-2 w-full rounded-md border border-ink/15 px-3 py-3 text-ink outline-none transition focus:border-sea"
+              className="input-base mt-2"
               name="password"
               type="password"
               autoComplete="new-password"
@@ -58,22 +58,22 @@ export default function BusinessSignupPage({
             />
           </label>
           <label className="block">
-            <span className="text-sm font-medium text-ink/75">
+            <span className="label-muted">
               Business name
             </span>
             <input
-              className="mt-2 w-full rounded-md border border-ink/15 px-3 py-3 text-ink outline-none transition focus:border-sea"
+              className="input-base mt-2"
               name="businessName"
               type="text"
               required
             />
           </label>
           <label className="block">
-            <span className="text-sm font-medium text-ink/75">
+            <span className="label-muted">
               Business category
             </span>
             <select
-              className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-3 text-ink outline-none transition focus:border-sea"
+              className="input-base mt-2"
               name="businessCategory"
               required
               defaultValue=""
@@ -88,12 +88,12 @@ export default function BusinessSignupPage({
               ))}
             </select>
           </label>
-          <TermsConsent submitLabel="Sign up as business" />
+          <TermsConsent submitLabel="Create account" />
         </form>
-        <p className="mt-6 text-sm text-ink/65">
+        <p className="mt-6 text-center text-sm" style={{ color: "var(--asail-text-muted)" }}>
           Already have an account?{" "}
-          <Link className="font-semibold text-sea" href="/auth/login">
-            Log in
+          <Link className="font-semibold text-[var(--asail-blue-bright)]" href="/auth/login">
+            Sign in
           </Link>
         </p>
       </section>

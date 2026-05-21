@@ -2,21 +2,224 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --asail-page: #1f1f20;
+  --asail-app: #111114;
+  --asail-sidebar: #151518;
+  --asail-panel: #18181c;
+  --asail-panel-elevated: #1d1d22;
+  --asail-panel-sunken: #0b0b0d;
+  --asail-text: #f4f4f5;
+  --asail-text-secondary: #b5b5bd;
+  --asail-text-muted: #74747d;
+  --asail-border: #29292f;
+  --asail-border-subtle: #202024;
+  --asail-blue: #3b82f6;
+  --asail-blue-bright: #60a5fa;
+  --asail-blue-dim: rgba(59, 130, 246, 0.15);
+  --asail-blue-border: rgba(59, 130, 246, 0.35);
+  --asail-blue-glow: 0 0 24px rgba(59, 130, 246, 0.22);
+  --asail-success: #16a34a;
+  --asail-success-surface: rgba(22, 163, 74, 0.16);
+  --asail-danger: #ef4444;
+  --asail-danger-surface: rgba(239, 68, 68, 0.16);
+  --asail-info: #0ea5e9;
+  --asail-info-surface: rgba(14, 165, 233, 0.16);
+  --asail-warning: #f59e0b;
+  --asail-warning-surface: rgba(245, 158, 11, 0.16);
+  --asail-dot: rgba(255, 255, 255, 0.04);
+  --asail-shadow-panel: 0 18px 60px rgba(0, 0, 0, 0.45);
+  --asail-shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="light"] {
   color-scheme: light;
+  --asail-page: #f3f4f6;
+  --asail-app: #ffffff;
+  --asail-sidebar: #f8fafc;
+  --asail-panel: #ffffff;
+  --asail-panel-elevated: #f9fafb;
+  --asail-panel-sunken: #f1f5f9;
+  --asail-text: #111827;
+  --asail-text-secondary: #4b5563;
+  --asail-text-muted: #6b7280;
+  --asail-border: #e5e7eb;
+  --asail-border-subtle: #f1f5f9;
+  --asail-dot: rgba(0, 0, 0, 0.04);
+  --asail-shadow-panel: 0 18px 60px rgba(15, 23, 42, 0.12);
+  --asail-shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  background: var(--asail-page);
+}
+
 body {
   margin: 0;
-  background: #f5f4ef;
-  color: #151615;
+  background-color: var(--asail-page);
+  background-image: radial-gradient(circle, var(--asail-dot) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--asail-text);
+  font-size: 14px;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea,
+a {
+  outline-color: var(--asail-blue);
+}
+
+:focus-visible {
+  outline: 2px solid var(--asail-blue);
+  outline-offset: 2px;
+}
+
+@layer components {
+  .card {
+    @apply rounded-[10px] border p-5;
+    background: var(--asail-panel);
+    border-color: var(--asail-border);
+    box-shadow: var(--asail-shadow-inner);
+    color: var(--asail-text);
+  }
+
+  .card-inset {
+    @apply rounded-[10px] border p-4;
+    background: var(--asail-panel-sunken);
+    border-color: var(--asail-border-subtle);
+    color: var(--asail-text-secondary);
+  }
+
+  .btn-primary {
+    @apply inline-flex min-h-10 items-center justify-center rounded-[8px] px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50;
+    background: var(--asail-blue);
+    box-shadow: var(--asail-blue-glow);
+  }
+
+  .btn-primary:hover {
+    background: var(--asail-blue-bright);
+  }
+
+  .btn-secondary {
+    @apply inline-flex min-h-10 items-center justify-center rounded-[8px] border px-4 py-2 text-sm font-semibold transition;
+    background: var(--asail-panel-elevated);
+    border-color: var(--asail-border);
+    color: var(--asail-text);
+  }
+
+  .btn-secondary:hover,
+  .btn-ghost:hover {
+    background: var(--asail-blue-dim);
+    border-color: var(--asail-blue-border);
+  }
+
+  .btn-ghost {
+    @apply inline-flex min-h-10 items-center justify-center rounded-[8px] border border-transparent px-3 py-2 text-sm font-semibold transition;
+    color: var(--asail-text-secondary);
+  }
+
+  .input-base {
+    @apply min-h-11 w-full rounded-[8px] border px-3 py-2 text-sm outline-none transition;
+    background: var(--asail-panel-sunken);
+    border-color: var(--asail-border);
+    color: var(--asail-text);
+  }
+
+  .input-base::placeholder {
+    color: var(--asail-text-muted);
+  }
+
+  .input-base:focus {
+    border-color: var(--asail-blue);
+    box-shadow: 0 0 0 2px var(--asail-blue-dim);
+  }
+
+  .stat-card {
+    @apply rounded-[10px] border p-4;
+    background: linear-gradient(180deg, var(--asail-panel-elevated), var(--asail-panel));
+    border-color: var(--asail-border);
+    box-shadow: var(--asail-shadow-inner);
+  }
+
+  .nav-item {
+    @apply flex min-h-10 items-center gap-3 rounded-[8px] px-3 py-2 text-sm font-medium transition;
+    color: var(--asail-text-secondary);
+  }
+
+  .nav-item:hover {
+    background: var(--asail-blue-dim);
+    color: var(--asail-text);
+  }
+
+  .nav-active {
+    background: var(--asail-blue-dim);
+    border: 1px solid var(--asail-blue-border);
+    color: var(--asail-text);
+    box-shadow: var(--asail-blue-glow);
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold;
+    border-color: var(--asail-border);
+    color: var(--asail-text-secondary);
+  }
+
+  .pill-success {
+    background: var(--asail-success-surface);
+    border-color: color-mix(in srgb, var(--asail-success), transparent 55%);
+    color: var(--asail-success);
+  }
+
+  .pill-danger {
+    background: var(--asail-danger-surface);
+    border-color: color-mix(in srgb, var(--asail-danger), transparent 55%);
+    color: var(--asail-danger);
+  }
+
+  .pill-info {
+    background: var(--asail-info-surface);
+    border-color: color-mix(in srgb, var(--asail-info), transparent 55%);
+    color: var(--asail-info);
+  }
+
+  .pill-warning {
+    background: var(--asail-warning-surface);
+    border-color: color-mix(in srgb, var(--asail-warning), transparent 55%);
+    color: var(--asail-warning);
+  }
+
+  .platform-pill {
+    @apply inline-flex items-center rounded-full border px-2 py-1 text-xs font-semibold;
+    background: var(--asail-blue-dim);
+    border-color: var(--asail-blue-border);
+    color: var(--asail-blue-bright);
+  }
+
+  .page-title {
+    @apply text-[17px] font-medium;
+    color: var(--asail-text);
+  }
+
+  .metric-value {
+    @apply text-[22px] font-semibold tracking-tight;
+    color: var(--asail-text);
+  }
+
+  .label-muted {
+    @apply text-[11px] font-semibold uppercase tracking-wide;
+    color: var(--asail-text-muted);
+  }
 }
