@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const protectedPrefixes = ["/business", "/creator", "/messages", "/settings"];
+const protectedPrefixes = ["/admin", "/business", "/creator", "/messages", "/settings"];
 
 function isProtectedPath(pathname: string) {
   return protectedPrefixes.some(
@@ -67,7 +67,7 @@ export async function middleware(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("deleted_at")
+    .select("deleted_at, role, suspended_at")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -75,9 +75,33 @@ export async function middleware(request: NextRequest) {
     return redirectToLogin(request);
   }
 
+  if (profile?.suspended_at) {
+    const suspendedUrl = request.nextUrl.clone();
+    suspendedUrl.pathname = "/suspended";
+    suspendedUrl.search = "";
+    return NextResponse.redirect(suspendedUrl);
+  }
+
+  if (
+    (request.nextUrl.pathname === "/admin" ||
+      request.nextUrl.pathname.startsWith("/admin/")) &&
+    profile?.role !== "admin"
+  ) {
+    const homeUrl = request.nextUrl.clone();
+    homeUrl.pathname = "/";
+    homeUrl.search = "";
+    return NextResponse.redirect(homeUrl);
+  }
+
   return response;
 }
 
 export const config = {
-  matcher: ["/business/:path*", "/creator/:path*", "/messages/:path*", "/settings/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/business/:path*",
+    "/creator/:path*",
+    "/messages/:path*",
+    "/settings/:path*",
+  ],
 };

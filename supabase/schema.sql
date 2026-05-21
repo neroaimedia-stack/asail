@@ -14,6 +14,7 @@ drop table if exists public.payouts cascade;
 drop table if exists public.messages cascade;
 drop table if exists public.conversations cascade;
 drop table if exists public.email_preferences cascade;
+drop table if exists public.pending_verifications cascade;
 drop table if exists public.invitations cascade;
 drop table if exists public.video_history cascade;
 drop table if exists public.videos cascade;
@@ -33,6 +34,7 @@ create table public.profiles (
   avatar_url text,
   last_seen timestamp with time zone default now(),
   deleted_at timestamp with time zone,
+  suspended_at timestamp with time zone,
   created_at timestamp with time zone not null default now()
 );
 
@@ -71,6 +73,15 @@ create table public.email_preferences (
   in_app_campaign_alerts boolean not null default true,
   in_app_messages boolean not null default true,
   updated_at timestamp with time zone not null default now()
+);
+
+create table public.pending_verifications (
+  id uuid primary key default gen_random_uuid(),
+  creator_id uuid not null references public.creators(id) on delete cascade,
+  platform text not null check (platform in ('youtube', 'tiktok', 'instagram')),
+  verification_code text not null,
+  created_at timestamp with time zone not null default now(),
+  constraint pending_verifications_creator_platform_unique unique (creator_id, platform)
 );
 
 create table public.creators (
@@ -263,6 +274,7 @@ create table public.payouts (
 
 create index businesses_user_id_idx on public.businesses(user_id);
 create index terms_accepted_user_id_idx on public.terms_accepted(user_id);
+create index pending_verifications_creator_id_idx on public.pending_verifications(creator_id);
 create index creators_user_id_idx on public.creators(user_id);
 create index creators_fts_idx on public.creators using gin(fts);
 create index campaigns_business_id_idx on public.campaigns(business_id);
@@ -300,6 +312,7 @@ alter table public.profiles enable row level security;
 alter table public.businesses enable row level security;
 alter table public.terms_accepted enable row level security;
 alter table public.email_preferences enable row level security;
+alter table public.pending_verifications enable row level security;
 alter table public.creators enable row level security;
 alter table public.campaigns enable row level security;
 alter table public.content_guidelines enable row level security;
@@ -617,6 +630,18 @@ create policy "Users can update own email preferences."
   to authenticated
   using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
+
+create policy "Admins can read pending verifications."
+  on public.pending_verifications
+  for select
+  to authenticated
+  using (private.current_user_is_admin());
+
+create policy "Admins can delete pending verifications."
+  on public.pending_verifications
+  for delete
+  to authenticated
+  using (private.current_user_is_admin());
 
 create policy "Creators can read businesses with active campaigns."
   on public.businesses

@@ -1,33 +1,8 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
+import { markDisputeUnderReview } from "../actions";
 import { resolveDispute } from "./actions";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-
-type RawDispute = {
-  created_at: string;
-  evidence_url: string | null;
-  id: string;
-  reason: string;
-  status: string;
-  videos: {
-    rejection_reason: string | null;
-    campaigns: {
-      title: string;
-    } | null;
-  } | null;
-  creators: {
-    handle: string;
-    profiles: {
-      full_name: string;
-    } | null;
-  } | null;
-  businesses: {
-    business_name: string;
-  } | null;
-};
 
 const statusStyles: Record<string, string> = {
   closed: "border-slate-200 bg-slate-100 text-slate-700",
@@ -37,221 +12,84 @@ const statusStyles: Record<string, string> = {
   under_review: "border-indigo-200 bg-indigo-50 text-indigo-700",
 };
 
-async function requireAdmin() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/auth/login?redirectedFrom=/admin/disputes");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profile?.role !== "admin") {
-    redirect("/");
-  }
-}
-
-async function getOpenDisputes() {
-  await requireAdmin();
-
+async function getDisputes(status: string) {
   const admin = createAdminClient();
-  const { data, error } = await admin
+  let query = admin
     .from("disputes")
-    .select(
-      "id, reason, evidence_url, status, created_at, videos(rejection_reason, campaigns(title)), creators(handle, profiles(full_name)), businesses(business_name)",
-    )
-    .eq("status", "open")
+    .select("id, reason, evidence_url, status, created_at, videos(rejection_reason, campaigns(title)), creators(handle, profiles(full_name)), businesses(business_name)")
     .order("created_at", { ascending: true });
 
-  if (error) {
-    throw new Error(error.message);
+  if (status === "resolved") {
+    query = query.in("status", ["resolved_creator", "resolved_business", "closed"]);
+  } else if (status !== "all") {
+    query = query.eq("status", status);
   }
 
-  return (data ?? []) as unknown as RawDispute[];
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return data ?? [];
 }
 
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function formatStatus(value: string) {
-  return value.replaceAll("_", " ");
+function daysOld(value: string) {
+  return Math.floor((Date.now() - new Date(value).getTime()) / 86400000);
 }
 
 export default async function AdminDisputesPage({
   searchParams,
 }: {
-  searchParams?: { error?: string; message?: string };
+  searchParams?: { status?: string };
 }) {
-  const disputes = await getOpenDisputes();
+  const status = searchParams?.status ?? "open";
+  const disputes = await getDisputes(status);
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-950">
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col md:flex-row">
-        <aside className="border-b border-slate-200 bg-white px-5 py-5 md:w-64 md:border-b-0 md:border-r">
-          <Link className="block text-lg font-semibold" href="/admin/disputes">
-            Asail admin
-          </Link>
-          <nav className="mt-6 flex gap-2 overflow-x-auto text-sm md:flex-col md:overflow-visible">
-            <Link
-              className="rounded-md bg-slate-100 px-3 py-2 font-semibold text-slate-950"
-              href="/admin/disputes"
-            >
-              Disputes
-            </Link>
-            <Link
-              className="rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
-              href="/admin/sync"
-            >
-              View sync
-            </Link>
-          </nav>
-        </aside>
-
-        <section className="flex-1 px-5 py-6 md:px-8">
-          <header className="mb-6">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Open disputes
-            </h1>
-            <p className="mt-1 text-sm text-slate-600">
-              Review creator appeals and resolve rejected campaign submissions.
-            </p>
-          </header>
-
-          {searchParams?.message ? (
-            <p className="mb-5 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-              {searchParams.message}
-            </p>
-          ) : null}
-
-          {searchParams?.error ? (
-            <p className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-              {searchParams.error}
-            </p>
-          ) : null}
-
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-            <div className="overflow-x-auto">
-              <table className="min-w-[1180px] w-full text-left text-sm">
-                <thead className="bg-slate-100 text-xs uppercase tracking-wide text-slate-500">
-                  <tr>
-                    <Th>Creator</Th>
-                    <Th>Business</Th>
-                    <Th>Campaign</Th>
-                    <Th>Rejection reason</Th>
-                    <Th>Dispute reason</Th>
-                    <Th>Evidence</Th>
-                    <Th>Date submitted</Th>
-                    <Th>Status</Th>
-                    <Th>Resolve</Th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {disputes.map((dispute) => (
-                    <tr className="align-top" key={dispute.id}>
-                      <Td>
-                        <div className="font-semibold">
-                          {dispute.creators?.profiles?.full_name ?? "Creator"}
-                        </div>
-                        <div className="mt-1 text-xs text-slate-500">
-                          {dispute.creators?.handle ?? "@creator"}
-                        </div>
-                      </Td>
-                      <Td>{dispute.businesses?.business_name ?? "Business"}</Td>
-                      <Td>{dispute.videos?.campaigns?.title ?? "Campaign"}</Td>
-                      <Td>
-                        {dispute.videos?.rejection_reason ?? "No reason provided."}
-                      </Td>
-                      <Td>{dispute.reason}</Td>
-                      <Td>
-                        {dispute.evidence_url ? (
-                          <a
-                            className="font-semibold text-indigo-700 hover:text-indigo-900"
-                            href={dispute.evidence_url}
-                            rel="noreferrer"
-                            target="_blank"
-                          >
-                            View evidence
-                          </a>
-                        ) : (
-                          <span className="text-slate-500">None</span>
-                        )}
-                      </Td>
-                      <Td>{formatDateTime(dispute.created_at)}</Td>
-                      <Td>
-                        <span
-                          className={`inline-flex rounded-md border px-2 py-1 text-xs font-semibold ${
-                            statusStyles[dispute.status] ?? statusStyles.open
-                          }`}
-                        >
-                          {formatStatus(dispute.status)}
-                        </span>
-                      </Td>
-                      <Td>
-                        <form action={resolveDispute} className="w-72 space-y-3">
-                          <input
-                            name="disputeId"
-                            type="hidden"
-                            value={dispute.id}
-                          />
-                          <textarea
-                            className="min-h-20 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                            name="adminNote"
-                            placeholder="Admin note required"
-                            required
-                          />
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
-                              name="resolution"
-                              type="submit"
-                              value="creator"
-                            >
-                              Resolve for creator
-                            </button>
-                            <button
-                              className="rounded-md bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700"
-                              name="resolution"
-                              type="submit"
-                              value="business"
-                            >
-                              Resolve for business
-                            </button>
-                          </div>
-                        </form>
-                      </Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {!disputes.length ? (
-              <p className="border-t border-slate-200 px-5 py-10 text-center text-sm text-slate-500">
-                No open disputes right now.
-              </p>
-            ) : null}
-          </div>
-        </section>
+    <div>
+      <Header title="Disputes" subtitle="Prioritize and resolve creator appeals." />
+      <form className="mb-5 rounded-lg border border-slate-200 bg-white p-4">
+        <select className="h-10 rounded-md border border-slate-300 px-3 text-sm" defaultValue={status} name="status">
+          <option value="all">All</option><option value="open">Open</option><option value="under_review">Under review</option><option value="resolved">Resolved</option>
+        </select>
+        <button className="ml-3 rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white">Filter</button>
+      </form>
+      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <table className="w-full min-w-[1250px] text-left text-sm">
+          <thead className="bg-slate-100 text-xs uppercase text-slate-500">
+            <tr><Th>SLA</Th><Th>Creator</Th><Th>Business</Th><Th>Campaign</Th><Th>Reason</Th><Th>Evidence</Th><Th>Status</Th><Th>Actions</Th></tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {disputes.map((dispute: any) => {
+              const age = daysOld(dispute.created_at);
+              return (
+                <tr key={dispute.id}>
+                  <Td><span className={age > 3 ? "font-semibold text-red-700" : "text-slate-700"}>{age} days</span></Td>
+                  <Td><div className="font-semibold">{dispute.creators?.profiles?.full_name ?? "Creator"}</div><div className="text-xs text-slate-500">{dispute.creators?.handle}</div></Td>
+                  <Td>{dispute.businesses?.business_name ?? "Business"}</Td>
+                  <Td>{dispute.videos?.campaigns?.title ?? "Campaign"}</Td>
+                  <Td>{dispute.reason}</Td>
+                  <Td>{dispute.evidence_url ? <a className="text-red-700" href={dispute.evidence_url}>Evidence</a> : "None"}</Td>
+                  <Td><span className={`rounded-md border px-2 py-1 text-xs font-semibold ${statusStyles[dispute.status]}`}>{dispute.status.replaceAll("_", " ")}</span></Td>
+                  <Td>
+                    <div className="space-y-3">
+                      <form action={markDisputeUnderReview}><input name="disputeId" type="hidden" value={dispute.id} /><button className={smallButton}>Mark under review</button></form>
+                      <form action={resolveDispute} className="flex flex-wrap gap-2">
+                        <input name="disputeId" type="hidden" value={dispute.id} />
+                        <input className="rounded-md border border-slate-300 px-2 py-2 text-xs" name="adminNote" placeholder="Admin note" required />
+                        <button className={smallButton} name="resolution" value="creator">For creator</button>
+                        <button className={smallButton} name="resolution" value="business">For business</button>
+                      </form>
+                    </div>
+                  </Td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
-    </main>
+    </div>
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-4 py-3 font-semibold">{children}</th>;
-}
-
-function Td({ children }: { children: React.ReactNode }) {
-  return <td className="px-4 py-4 text-slate-700">{children}</td>;
-}
+const smallButton = "rounded-md border border-slate-300 px-3 py-2 text-xs font-semibold hover:bg-slate-100";
+function Header({ subtitle, title }: { subtitle: string; title: string }) { return <header className="mb-6"><h1 className="text-2xl font-semibold">{title}</h1><p className="mt-1 text-sm text-slate-600">{subtitle}</p></header>; }
+function Th({ children }: { children: React.ReactNode }) { return <th className="px-4 py-3 font-semibold">{children}</th>; }
+function Td({ children }: { children: React.ReactNode }) { return <td className="px-4 py-4 align-top">{children}</td>; }
