@@ -211,6 +211,12 @@ export default async function CreatorEarningsPage() {
             >
               Settings
             </Link>
+            <Link
+              className="rounded-md px-3 py-2 text-slate-700 hover:bg-indigo-50"
+              href="/help"
+            >
+              Help
+            </Link>
           </nav>
         </aside>
 

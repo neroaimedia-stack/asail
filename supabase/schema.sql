@@ -11,6 +11,7 @@ drop function if exists public.handle_new_user();
 drop schema if exists private cascade;
 
 drop table if exists public.payouts cascade;
+drop table if exists public.support_tickets cascade;
 drop table if exists public.messages cascade;
 drop table if exists public.conversations cascade;
 drop table if exists public.email_preferences cascade;
@@ -272,6 +273,24 @@ create table public.payouts (
   created_at timestamp with time zone not null default now()
 );
 
+create table public.support_tickets (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.profiles(id) on delete set null,
+  subject text not null,
+  category text not null check (
+    category in ('account', 'campaign', 'payment', 'verification', 'dispute', 'bug', 'other')
+  ),
+  message text not null,
+  attach_url text,
+  status text not null default 'open' check (
+    status in ('open', 'in_progress', 'resolved', 'closed')
+  ),
+  admin_reply text,
+  replied_at timestamp with time zone,
+  replied_by uuid references public.profiles(id) on delete set null,
+  created_at timestamp with time zone not null default now()
+);
+
 create index businesses_user_id_idx on public.businesses(user_id);
 create index terms_accepted_user_id_idx on public.terms_accepted(user_id);
 create index pending_verifications_creator_id_idx on public.pending_verifications(creator_id);
@@ -307,6 +326,8 @@ create index conversations_creator_id_idx on public.conversations(creator_id, la
 create index messages_conversation_idx on public.messages(conversation_id, created_at asc);
 create index payouts_creator_id_idx on public.payouts(creator_id);
 create index payouts_video_id_idx on public.payouts(video_id);
+create index support_tickets_user_id_idx on public.support_tickets(user_id, created_at desc);
+create index support_tickets_status_created_at_idx on public.support_tickets(status, created_at desc);
 
 alter table public.profiles enable row level security;
 alter table public.businesses enable row level security;
@@ -324,6 +345,7 @@ alter table public.invitations enable row level security;
 alter table public.conversations enable row level security;
 alter table public.messages enable row level security;
 alter table public.payouts enable row level security;
+alter table public.support_tickets enable row level security;
 
 create schema private;
 
@@ -914,6 +936,31 @@ create policy "Businesses can update payouts for own campaign videos."
   to authenticated
   using (private.business_can_access_video(video_id))
   with check (private.business_can_access_video(video_id));
+
+create policy "Users can create own support tickets."
+  on public.support_tickets
+  for insert
+  to authenticated
+  with check (user_id = (select auth.uid()));
+
+create policy "Users can read own support tickets."
+  on public.support_tickets
+  for select
+  to authenticated
+  using (user_id = (select auth.uid()));
+
+create policy "Admins can read all support tickets."
+  on public.support_tickets
+  for select
+  to authenticated
+  using (private.current_user_is_admin());
+
+create policy "Admins can update all support tickets."
+  on public.support_tickets
+  for update
+  to authenticated
+  using (private.current_user_is_admin())
+  with check (private.current_user_is_admin());
 
 create or replace view public.earnings_summary
 with (security_invoker = true)

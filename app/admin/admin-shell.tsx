@@ -9,6 +9,7 @@ const links = [
   ["Verifications", "/admin/verifications"],
   ["Messages", "/admin/messages"],
   ["Email logs", "/admin/email-logs"],
+  ["Tickets", "/admin/tickets"],
   ["Settings", "/admin/settings"],
 ];
 

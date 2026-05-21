@@ -137,3 +137,44 @@ export function newMessageEmail({
     subject: `New message from ${senderName}`,
   };
 }
+
+export function supportTicketConfirmationEmail({
+  name,
+  subject,
+  ticketId,
+}: {
+  name: string;
+  subject: string;
+  ticketId: string;
+}): TemplateResult {
+  return {
+    html: layout(`
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>We received your message about <strong>${escapeHtml(subject)}</strong>.</p>
+      <p>We aim to respond within 1-2 business days.</p>
+      <p>Your ticket ID is <strong>#${escapeHtml(ticketId)}</strong>.</p>
+    `),
+    subject: "We received your support request - Asail",
+  };
+}
+
+export function supportTicketReplyEmail({
+  adminReply,
+  message,
+  subject,
+}: {
+  adminReply: string;
+  message: string;
+  subject: string;
+}): TemplateResult {
+  return {
+    html: layout(`
+      <p>We replied to your support request: <strong>${escapeHtml(subject)}</strong>.</p>
+      <p style="margin-top:18px;font-weight:700;">Your original message</p>
+      <p style="border-left:3px solid #d1d5db;padding-left:14px;color:#374151;">${escapeHtml(message)}</p>
+      <p style="margin-top:18px;font-weight:700;">Reply from Asail support</p>
+      <p style="border-left:3px solid #111827;padding-left:14px;color:#374151;">${escapeHtml(adminReply)}</p>
+    `),
+    subject: `Re: ${subject} - Asail Support`,
+  };
+}
