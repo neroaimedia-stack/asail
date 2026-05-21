@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const protectedPrefixes = ["/business", "/creator"];
+const protectedPrefixes = ["/business", "/creator", "/messages", "/settings"];
 
 function isProtectedPath(pathname: string) {
   return protectedPrefixes.some(
@@ -65,9 +65,19 @@ export async function middleware(request: NextRequest) {
     return redirectToLogin(request);
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("deleted_at")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.deleted_at) {
+    return redirectToLogin(request);
+  }
+
   return response;
 }
 
 export const config = {
-  matcher: ["/business/:path*", "/creator/:path*"],
+  matcher: ["/business/:path*", "/creator/:path*", "/messages/:path*", "/settings/:path*"],
 };

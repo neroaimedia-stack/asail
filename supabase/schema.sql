@@ -31,7 +31,8 @@ create table public.profiles (
   role text not null check (role in ('business', 'creator', 'admin')),
   full_name text not null,
   avatar_url text,
-  last_seen timestamp with time zone,
+  last_seen timestamp with time zone default now(),
+  deleted_at timestamp with time zone,
   created_at timestamp with time zone not null default now()
 );
 
@@ -42,6 +43,10 @@ create table public.businesses (
   category text not null,
   description text,
   logo_url text,
+  website_url text,
+  phone_number text,
+  address text,
+  country text,
   created_at timestamp with time zone not null default now(),
   constraint businesses_user_id_unique unique (user_id)
 );
@@ -60,7 +65,12 @@ create table public.email_preferences (
   video_updates boolean not null default true,
   invitations boolean not null default true,
   campaign_alerts boolean not null default true,
-  messages boolean not null default true
+  messages boolean not null default true,
+  in_app_video_updates boolean not null default true,
+  in_app_invitations boolean not null default true,
+  in_app_campaign_alerts boolean not null default true,
+  in_app_messages boolean not null default true,
+  updated_at timestamp with time zone not null default now()
 );
 
 create table public.creators (
@@ -71,6 +81,15 @@ create table public.creators (
   categories text[] not null default '{}',
   verified boolean not null default false,
   bio text,
+  profile_photo_url text,
+  phone_number text,
+  country text,
+  date_of_birth date,
+  youtube_connected boolean not null default false,
+  youtube_channel_name text,
+  tiktok_connected boolean not null default false,
+  instagram_connected boolean not null default false,
+  needs_reauth boolean not null default false,
   fts tsvector generated always as (
     to_tsvector(
       'english',
